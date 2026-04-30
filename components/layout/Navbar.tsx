@@ -44,7 +44,11 @@ const quickLinks = [
   { href: "/admin/customers", label: "Admin Customers" }
 ];
 
-export function Navbar() {
+type NavbarProps = {
+  visible?: boolean;
+};
+
+export function Navbar({ visible = true }: NavbarProps) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
 
@@ -55,6 +59,12 @@ export function Navbar() {
   }, []);
 
   useEffect(() => {
+    if (!visible) {
+      setIsOpen(false);
+    }
+  }, [visible]);
+
+  useEffect(() => {
     document.body.style.overflow = isOpen ? "hidden" : "";
     return () => {
       document.body.style.overflow = "";
@@ -62,7 +72,16 @@ export function Navbar() {
   }, [isOpen]);
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50 px-3 pt-3 sm:px-6 sm:pt-4">
+    <motion.header
+      initial={false}
+      animate={{
+        opacity: visible ? 1 : 0,
+        y: visible ? 0 : -22
+      }}
+      transition={{ duration: 0.38, ease: "easeOut" }}
+      style={{ pointerEvents: visible ? "auto" : "none" }}
+      className="fixed inset-x-0 top-0 z-50 px-3 pt-3 sm:px-6 sm:pt-4"
+    >
       <motion.div
         initial={false}
         animate={{
@@ -170,6 +189,7 @@ export function Navbar() {
           </motion.div>
         ) : null}
       </AnimatePresence>
-    </header>
+    </motion.header>
   );
 }
+

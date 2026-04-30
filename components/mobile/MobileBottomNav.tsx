@@ -23,7 +23,7 @@ const sideItems = [
     label: "Cart",
     href: "/cart",
     icon: ShoppingBag,
-    match: (pathname: string) => pathname.startsWith("/cart") || pathname.startsWith("/occasions")
+    match: (pathname: string) => pathname.startsWith("/cart")
   },
   {
     label: "Profile",
@@ -42,10 +42,7 @@ export function MobileBottomNav() {
     <>
       <div className="h-[112px] md:hidden" aria-hidden />
 
-      <nav
-        className="fixed inset-x-0 bottom-0 z-[70] px-3 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] md:hidden"
-        aria-label="Mobile navigation"
-      >
+      <nav className="fixed inset-x-0 bottom-0 z-[70] px-3 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] md:hidden" aria-label="Mobile navigation">
         <div className="relative mx-auto max-w-md rounded-t-[1.6rem] rounded-b-[1.3rem] border border-[#e8dece] bg-[#f8f3eb]/94 px-3 pb-2 pt-3 shadow-[0_-12px_28px_rgba(59,43,27,0.18)] backdrop-blur-2xl backdrop-saturate-125">
           <div className="pointer-events-none absolute inset-0 rounded-t-[1.6rem] rounded-b-[1.3rem] bg-gradient-to-b from-[#fff8ef]/75 to-[#f3eade]/66" />
 
