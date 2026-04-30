@@ -18,7 +18,7 @@ export function FeaturedCollections() {
 
         <motion.div
           variants={staggerWrap}
-          initial="hidden"
+          initial={false}
           whileInView="visible"
           viewport={{ once: true, amount: 0.2 }}
           className="mt-8 grid gap-4 sm:mt-10 sm:grid-cols-2 lg:grid-cols-3"

@@ -24,7 +24,7 @@ export function Craftsmanship() {
             return (
               <motion.article
                 key={step.title}
-                initial={{ opacity: 0, y: 16 }}
+                initial={false}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, amount: 0.25 }}
                 transition={{ duration: 0.5, delay: index * 0.08 }}

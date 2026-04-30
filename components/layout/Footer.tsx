@@ -2,10 +2,17 @@ import { Instagram, Mail } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
+const policyLinks = [
+  { href: "/terms-and-conditions", label: "Terms & Conditions" },
+  { href: "/privacy-policy", label: "Privacy Policy" },
+  { href: "/refund-cancellation-policy", label: "Refund & Cancellation" },
+  { href: "/shipping-delivery-policy", label: "Shipping & Delivery" }
+];
+
 export function Footer() {
   return (
-    <footer className="border-t border-black/10 px-5 py-14 sm:px-8 lg:px-12">
-      <div className="mx-auto grid w-full max-w-7xl gap-10 md:grid-cols-3 md:items-end">
+    <footer className="relative z-10 border-t border-black/10 px-5 pb-[max(5.5rem,env(safe-area-inset-bottom))] pt-14 sm:px-8 lg:px-12">
+      <div className="mx-auto grid w-full max-w-7xl gap-10 md:grid-cols-4 md:items-end">
         <div>
           <div className="flex items-center gap-3">
             <Image
@@ -22,21 +29,33 @@ export function Footer() {
           </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-6 text-sm">
+        <div className="grid grid-cols-2 gap-6 text-sm md:col-span-2">
           <div>
             <p className="mb-3 text-[10px] uppercase tracking-[0.25em] text-royal-700/55">Explore</p>
             <ul className="space-y-2 text-royal-700/80">
-              <li><Link href="#">Collections</Link></li>
-              <li><Link href="#">Maison</Link></li>
-              <li><Link href="#">Journal</Link></li>
+              <li><Link href="/collections">Collections</Link></li>
+              <li><Link href="/about-us">About Us</Link></li>
+              <li><Link href="/contact-us">Contact Us</Link></li>
+            </ul>
+          </div>
+          <div>
+            <p className="mb-3 text-[10px] uppercase tracking-[0.25em] text-royal-700/55">Quick Links</p>
+            <ul className="space-y-2 text-royal-700/80">
+              {policyLinks.map((link) => (
+                <li key={link.href}>
+                  <a href={link.href} className="cursor-pointer underline-offset-2 hover:underline">
+                    {link.label}
+                  </a>
+                </li>
+              ))}
             </ul>
           </div>
           <div>
             <p className="mb-3 text-[10px] uppercase tracking-[0.25em] text-royal-700/55">Contact</p>
             <ul className="space-y-2 text-royal-700/80">
-              <li>atelier@houseoferaya.com</li>
-              <li>+91 22 0000 0000</li>
-              <li>Mumbai</li>
+              <li>[Insert Support Email]</li>
+              <li>[Insert Phone Number]</li>
+              <li>Varanasi</li>
             </ul>
           </div>
         </div>

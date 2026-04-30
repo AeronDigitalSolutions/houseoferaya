@@ -1,22 +1,10 @@
 import type { Metadata } from "next";
-import { Cormorant_Garamond, Manrope } from "next/font/google";
+import { MobileBottomNav } from "@/components/mobile/MobileBottomNav";
 import "./globals.css";
 
-const heading = Cormorant_Garamond({
-  subsets: ["latin"],
-  variable: "--font-heading",
-  weight: ["400", "500", "600", "700"]
-});
-
-const body = Manrope({
-  subsets: ["latin"],
-  variable: "--font-body",
-  weight: ["400", "500", "600", "700"]
-});
-
 export const metadata: Metadata = {
-  title: "House of Eraya | Sculpted Elegance",
-  description: "Luxury jewelry house blending sculpted artistry with timeless elegance."
+  title: "Jewelry Ecommerce Architecture",
+  description: "Scalable jewelry ecommerce scaffold built with Next.js App Router and Prisma"
 };
 
 export default function RootLayout({
@@ -26,8 +14,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${heading.variable} ${body.variable} bg-[#f7f3ee] font-body text-[#2a2927] antialiased`}>
+      <body suppressHydrationWarning className="bg-[#f7f3ee] font-body text-[#2a2927] antialiased">
         {children}
+        <MobileBottomNav />
       </body>
     </html>
   );

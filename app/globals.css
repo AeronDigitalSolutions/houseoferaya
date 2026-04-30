@@ -14,7 +14,6 @@ html,
 body {
   margin: 0;
   padding: 0;
-  background: #f7f3ee;
 }
 
 body {
@@ -31,6 +30,14 @@ button {
   cursor: pointer;
   border: 0;
   background: transparent;
+}
+
+.container-base {
+  @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
+}
+
+.card {
+  @apply rounded-2xl border border-stone-200 bg-white shadow-sm;
 }
 
 ::selection {

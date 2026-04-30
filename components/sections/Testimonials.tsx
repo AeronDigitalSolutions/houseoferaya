@@ -25,10 +25,10 @@ export function Testimonials() {
         <SectionHeading eyebrow="Client Notes" title="Testimonials" align="center" />
 
         <div className="mt-8 rounded-[1.8rem] border border-black/10 bg-white/60 p-5 shadow-soft sm:p-8 md:p-10">
-          <AnimatePresence mode="wait">
+          <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={current.name}
-              initial={{ opacity: 0, y: 10 }}
+              initial={false}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.35 }}

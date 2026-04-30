@@ -10,7 +10,7 @@ export function Hero() {
       <div className="absolute inset-0 opacity-40 [background:radial-gradient(circle_at_80%_15%,rgba(255,255,255,0.68),transparent_40%),radial-gradient(circle_at_20%_85%,rgba(36,34,31,0.1),transparent_46%)]" />
 
       <div className="relative mx-auto grid w-full max-w-7xl items-end gap-10 lg:grid-cols-[1fr_0.95fr] lg:gap-14">
-        <motion.div initial={{ opacity: 0, y: 22 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
+        <motion.div initial={false} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
           <p className="text-[10px] uppercase tracking-[0.32em] text-[#726453] sm:text-xs">Fine Jewelry Maison</p>
           <h1 className="mt-4 font-heading text-[3.15rem] leading-[0.87] text-royal-800 sm:text-[4.6rem] lg:max-w-xl lg:text-[5.1rem]">
             Minimal Form.
@@ -31,7 +31,7 @@ export function Hero() {
         </motion.div>
 
         <motion.div
-          initial={{ opacity: 0, y: 28 }}
+          initial={false}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.95, delay: 0.12 }}
           className="relative mx-auto w-full max-w-xl"

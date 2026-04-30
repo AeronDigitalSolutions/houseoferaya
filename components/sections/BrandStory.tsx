@@ -7,7 +7,7 @@ export function BrandStory() {
     <section className="px-5 py-16 sm:px-8 sm:py-20 lg:px-12 md:py-24">
       <div className="mx-auto w-full max-w-5xl rounded-[1.8rem] border border-black/10 bg-[#262421] px-6 py-12 text-center text-[#f6efe6] shadow-soft sm:px-10 sm:py-16">
         <motion.p
-          initial={{ opacity: 0, y: 20 }}
+          initial={false}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.45 }}
           transition={{ duration: 0.7 }}
@@ -16,7 +16,7 @@ export function BrandStory() {
           Our Philosophy
         </motion.p>
         <motion.h2
-          initial={{ opacity: 0, y: 20 }}
+          initial={false}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.45 }}
           transition={{ duration: 0.8, delay: 0.06 }}
@@ -27,7 +27,7 @@ export function BrandStory() {
           Precise Emotion.
         </motion.h2>
         <motion.p
-          initial={{ opacity: 0, y: 20 }}
+          initial={false}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.45 }}
           transition={{ duration: 0.8, delay: 0.12 }}

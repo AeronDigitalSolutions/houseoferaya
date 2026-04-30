@@ -13,7 +13,7 @@ export function GalleryStrip() {
           {galleryImages.map((img, index) => (
             <motion.div
               key={img}
-              initial={{ opacity: 0, y: 10 }}
+              initial={false}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, amount: 0.2 }}
               transition={{ duration: 0.4, delay: index * 0.05 }}
