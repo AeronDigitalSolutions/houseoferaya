@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "./scripts/dev-stable.sh",
+    "dev:stable": "./scripts/dev-stable.sh",
     "dev:webpack": "next dev",
     "build": "next build",
     "start": "next start",

@@ -42,6 +42,13 @@ npm run db:seed
 npm run dev
 ```
 
+Note:
+- `npm run dev` uses a stable launcher that clears stale Next.js dev cache and frees port `3000` automatically to prevent recurring "Internal Server Error" after UI edits.
+- If needed, you can still run plain webpack mode with:
+```bash
+npm run dev:webpack
+```
+
 ## Folder Structure
 
 ```text

@@ -18,7 +18,7 @@ export function Craftsmanship() {
           align="center"
         />
 
-        <div className="mt-9 grid gap-4 sm:mt-11 md:grid-cols-2 lg:grid-cols-4">
+        <div className="craftsmanship-cards mt-9 grid gap-4 sm:mt-11 md:grid-cols-2 lg:grid-cols-4">
           {craftsmanshipSteps.map((step, index) => {
             const Icon = icons[index];
             return (
@@ -28,7 +28,7 @@ export function Craftsmanship() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, amount: 0.25 }}
                 transition={{ duration: 0.5, delay: index * 0.08 }}
-                className="rounded-[1.4rem] border border-black/10 bg-white/55 p-5 shadow-luxe sm:p-6"
+                className="craftsmanship-card rounded-[1.4rem] border border-black/10 bg-white/55 p-5 shadow-luxe transition duration-300 md:hover:scale-[1.03] sm:p-6"
               >
                 <div className="mb-4 inline-flex rounded-full border border-black/10 bg-beige-100 p-2.5 text-royal-800">
                   <Icon size={16} />

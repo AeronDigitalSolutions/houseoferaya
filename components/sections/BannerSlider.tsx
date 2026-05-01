@@ -41,7 +41,7 @@ export function BannerSlider({ immersive = false }: BannerSliderProps) {
 
   if (immersive) {
     return (
-      <section className="relative flex min-h-[100svh] w-full items-center justify-center overflow-hidden bg-gradient-to-b from-[#f7f3ee] via-[#f5efe5] to-[#efe4d1] px-4 py-5 sm:px-6 sm:py-6 lg:px-10">
+      <section className="relative flex min-h-[100svh] w-full items-start justify-center overflow-hidden bg-gradient-to-b from-[#f7f3ee] via-[#f5efe5] to-[#efe4d1] px-4 pb-8 pt-[90px] sm:px-6 sm:pb-10 sm:pt-[104px] lg:px-10">
         <div className="hidden w-full max-w-[1420px] md:block">
           <div className="rounded-[2.2rem] border border-[#e2c596]/85 bg-gradient-to-br from-[#f9ecda] via-[#dfc097] to-[#b4854e] p-[6px] shadow-[0_22px_60px_rgba(83,62,35,0.28),inset_0_1px_0_rgba(255,250,242,0.7)]">
             <div className="relative aspect-[16/9] overflow-hidden rounded-[1.95rem] bg-black">

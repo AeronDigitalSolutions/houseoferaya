@@ -44,3 +44,11 @@ button {
   background: rgba(169, 137, 95, 0.28);
   color: #1d1c1a;
 }
+
+@media (hover: hover) and (pointer: fine) {
+  .craftsmanship-cards:hover > .craftsmanship-card:not(:hover) {
+    opacity: 0.45;
+    filter: blur(2px);
+    transform: scale(0.97);
+  }
+}
