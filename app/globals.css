@@ -52,3 +52,22 @@ button {
     transform: scale(0.97);
   }
 }
+
+@keyframes arrivals-marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.new-arrivals-track {
+  animation: arrivals-marquee 32s linear infinite;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .new-arrivals-track:hover {
+    animation-play-state: paused;
+  }
+}

@@ -2,18 +2,22 @@ import Link from "next/link";
 import { formatCurrency } from "@/lib/format";
 import type { Product } from "@/lib/types";
 
-export function ProductCard({ product }: { product: Product }) {
-  return (
-    <article className="group card overflow-hidden transition hover:-translate-y-1 hover:shadow-md">
-      <Link href={`/products/${product.slug}`} className="block">
-        <div className="aspect-square overflow-hidden bg-stone-100">
-          <img
-            src={product.image}
-            alt={product.name}
-            className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-          />
-        </div>
-      </Link>
+type ProductCardProps = {
+  product: Product;
+  fullCardClickable?: boolean;
+  hideViewButton?: boolean;
+};
+
+export function ProductCard({ product, fullCardClickable = false, hideViewButton = false }: ProductCardProps) {
+  const mediaAndInfo = (
+    <>
+      <div className="aspect-square overflow-hidden bg-stone-100">
+        <img
+          src={product.image}
+          alt={product.name}
+          className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+        />
+      </div>
 
       <div className="space-y-3 p-4">
         <div>
@@ -27,14 +31,37 @@ export function ProductCard({ product }: { product: Product }) {
             <p className="text-xs text-stone-500 line-through">{formatCurrency(product.compareAtPrice)}</p>
           ) : null}
         </div>
-
-        <Link
-          href={`/products/${product.slug}`}
-          className="inline-flex rounded-full border border-stone-300 px-4 py-2 text-xs font-medium text-stone-800 transition hover:border-stone-800 hover:text-stone-900"
-        >
-          View Product
-        </Link>
       </div>
+    </>
+  );
+
+  if (fullCardClickable) {
+    return (
+      <Link
+        href={`/products/${product.slug}`}
+        className="group block card overflow-hidden transition hover:-translate-y-1 hover:shadow-md"
+      >
+        {mediaAndInfo}
+      </Link>
+    );
+  }
+
+  return (
+    <article className="group card overflow-hidden transition hover:-translate-y-1 hover:shadow-md">
+      <Link href={`/products/${product.slug}`} className="block">
+        {mediaAndInfo}
+      </Link>
+
+      {!hideViewButton ? (
+        <div className="p-4 pt-0">
+          <Link
+            href={`/products/${product.slug}`}
+            className="inline-flex rounded-full border border-stone-300 px-4 py-2 text-xs font-medium text-stone-800 transition hover:border-stone-800 hover:text-stone-900"
+          >
+            View Product
+          </Link>
+        </div>
+      ) : null}
     </article>
   );
 }

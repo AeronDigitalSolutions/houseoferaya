@@ -2,7 +2,9 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { BannerSlider } from "@/components/sections/BannerSlider";
 import { Hero } from "@/components/sections/Hero";
+import { NewArrivalsMarquee } from "@/components/sections/NewArrivalsMarquee";
 import { FeaturedCollections } from "@/components/sections/FeaturedCollections";
+import { BestsellersSection } from "@/components/sections/BestsellersSection";
 import { SignatureHighlight } from "@/components/sections/SignatureHighlight";
 import { BrandStory } from "@/components/sections/BrandStory";
 import { Craftsmanship } from "@/components/sections/Craftsmanship";
@@ -19,7 +21,9 @@ export function HomePageShell() {
       <div id="after-banner">
         <Hero />
       </div>
+      <NewArrivalsMarquee />
       <FeaturedCollections />
+      <BestsellersSection />
       <SignatureHighlight />
       <BrandStory />
       <Craftsmanship />
