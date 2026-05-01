@@ -24,7 +24,7 @@ export default function RefundCancellationPolicyPage() {
         },
         {
           heading: "4. Return Process",
-          body: "Email support at [Insert Support Email] with order number, item details, and reason. After approval, follow return instructions and shipping label guidance. Items are quality-inspected on receipt before refund/exchange resolution."
+          body: "Email support at official.houseoferayya@gmail.com with order number, item details, and reason. After approval, follow return instructions and shipping label guidance. Items are quality-inspected on receipt before refund/exchange resolution."
         },
         {
           heading: "5. Refund Policy",
@@ -40,7 +40,7 @@ export default function RefundCancellationPolicyPage() {
         },
         {
           heading: "Contact Us",
-          body: "Customer Support Email: [Insert Email], Customer Support Phone: [Insert Phone Number], Support Hours: [Insert Operating Hours]."
+          body: "Customer Support Email: official.houseoferayya@gmail.com, Customer Support Phone: +91-7889072256, Support Hours: [Insert Operating Hours]."
         }
       ]}
     />

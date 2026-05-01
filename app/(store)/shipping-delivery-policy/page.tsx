@@ -36,15 +36,15 @@ export default function ShippingDeliveryPolicyPage() {
         },
         {
           heading: "7. Address Changes",
-          body: "For address updates, contact support at [Insert Support Email] as early as possible. Address changes can be accommodated only if the order is not yet dispatched."
+          body: "For address updates, contact support at official.houseoferayya@gmail.com as early as possible. Address changes can be accommodated only if the order is not yet dispatched."
         },
         {
           heading: "8. Damaged on Arrival",
-          body: "If a package appears tampered or damaged, do not accept delivery and contact support immediately. If already accepted, keep original packaging, take photos, and email [Insert Support Email] within 24 hours."
+          body: "If a package appears tampered or damaged, do not accept delivery and contact support immediately. If already accepted, keep original packaging, take photos, and email official.houseoferayya@gmail.com within 24 hours."
         },
         {
           heading: "Contact Our Shipping Team",
-          body: "Email: [Insert Support Email], Phone: [Insert Phone Number], Operating Hours: [Insert Timings]."
+          body: "Email: official.houseoferayya@gmail.com, Phone: +91-7889072256, Operating Hours: [Insert Timings]."
         }
       ]}
     />

@@ -14,8 +14,8 @@ export default function ContactUsPage() {
         <button className="rounded-full bg-stone-900 px-5 py-2 text-sm text-white">Send Message</button>
 
         <div className="space-y-1 border-t border-stone-200 pt-4 text-sm text-stone-600">
-          <p>Email: [Insert Support Email]</p>
-          <p>Phone: [Insert Phone Number]</p>
+          <p>Email: official.houseoferayya@gmail.com</p>
+          <p>Phone: +91-7889072256</p>
           <p>Operating Hours: [Insert Timings]</p>
           <p>Address: Plot no-252, Varanasi Enclave Colony, P.O.- Bhullanpur, Marhauli, Varanasi (U.P) 221108</p>
         </div>

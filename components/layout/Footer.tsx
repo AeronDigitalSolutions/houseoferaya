@@ -53,8 +53,8 @@ export function Footer() {
           <div>
             <p className="mb-3 text-[10px] uppercase tracking-[0.25em] text-royal-700/55">Contact</p>
             <ul className="space-y-2 text-royal-700/80">
-              <li>[Insert Support Email]</li>
-              <li>[Insert Phone Number]</li>
+              <li>official.houseoferayya@gmail.com</li>
+              <li>+91-7889072256</li>
               <li>Varanasi</li>
             </ul>
           </div>

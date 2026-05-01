@@ -191,7 +191,7 @@ export const orders: Order[] = [
     items: cartItems,
     shippingAddress: {
       fullName: "Placeholder Customer",
-      phone: "+91 90000 00000",
+      phone: "+91-7889072256",
       line1: "House/Flat Placeholder",
       city: "Mumbai",
       state: "Maharashtra",
@@ -225,7 +225,7 @@ export const orders: Order[] = [
     ],
     shippingAddress: {
       fullName: "Placeholder Customer",
-      phone: "+91 90000 00000",
+      phone: "+91-7889072256",
       line1: "Street Placeholder",
       city: "Bengaluru",
       state: "Karnataka",

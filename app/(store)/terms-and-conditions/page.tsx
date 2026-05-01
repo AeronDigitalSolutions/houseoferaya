@@ -56,7 +56,7 @@ export default function TermsAndConditionsPage() {
         },
         {
           heading: "12. Contact Us",
-          body: "For any questions regarding these terms, contact us at Customer Support Email: [Insert Email], Customer Support Phone: [Insert Phone Number], Operating Hours: [Insert Timings]."
+          body: "For any questions regarding these terms, contact us at Customer Support Email: official.houseoferayya@gmail.com, Customer Support Phone: +91-7889072256, Operating Hours: [Insert Timings]."
         }
       ]}
     />

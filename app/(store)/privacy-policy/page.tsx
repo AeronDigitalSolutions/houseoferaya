@@ -40,7 +40,7 @@ export default function PrivacyPolicyPage() {
         },
         {
           heading: "8. Contact Us",
-          body: "Email: [Insert Support Email], Phone: [Insert Phone Number], Address: Plot no-252, Varanasi Enclave Colony, P.O.- Bhullanpur, Marhauli, Varanasi (U.P) 221108"
+          body: "Email: official.houseoferayya@gmail.com, Phone: +91-7889072256, Address: Plot no-252, Varanasi Enclave Colony, P.O.- Bhullanpur, Marhauli, Varanasi (U.P) 221108"
         }
       ]}
     />
