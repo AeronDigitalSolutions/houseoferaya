@@ -2,7 +2,13 @@ import { ProductCard } from "@/components/ProductCard";
 import { EmptyState } from "@/components/EmptyState";
 import type { Product } from "@/lib/types";
 
-export function ProductGrid({ products }: { products: Product[] }) {
+type ProductGridProps = {
+  products: Product[];
+  fullCardClickable?: boolean;
+  hideViewButton?: boolean;
+};
+
+export function ProductGrid({ products, fullCardClickable = false, hideViewButton = false }: ProductGridProps) {
   if (!products.length) {
     return (
       <EmptyState
@@ -15,7 +21,12 @@ export function ProductGrid({ products }: { products: Product[] }) {
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
       {products.map((product) => (
-        <ProductCard key={product.id} product={product} />
+        <ProductCard
+          key={product.id}
+          product={product}
+          fullCardClickable={fullCardClickable}
+          hideViewButton={hideViewButton}
+        />
       ))}
     </div>
   );

@@ -14,6 +14,16 @@ export type Product = {
   categoryId: string;
   image: string;
   isActive: boolean;
+  pricingBreakdown?: {
+    metalRate: number;
+    metalPrice: number;
+    makingCharge: number;
+    stoneCost: number;
+    huidCharge: number;
+    subtotalBeforeGst: number;
+    gstAmount: number;
+    finalPrice: number;
+  };
 };
 
 export type Category = {
@@ -30,7 +40,14 @@ export type CartLine = {
   quantity: number;
 };
 
-export type OrderStatus = "PENDING" | "CONFIRMED" | "PROCESSING" | "SHIPPED" | "DELIVERED" | "CANCELLED";
+export type OrderStatus =
+  | "PENDING"
+  | "CONFIRMED"
+  | "PROCESSING"
+  | "SHIPPED"
+  | "DELIVERED"
+  | "CANCELLED"
+  | "RETURNED";
 export type PaymentStatus = "PENDING" | "AUTHORIZED" | "PAID" | "FAILED" | "REFUNDED";
 export type ShippingStatus = "NOT_CREATED" | "READY_TO_SHIP" | "IN_TRANSIT" | "DELIVERED" | "RETURNED";
 

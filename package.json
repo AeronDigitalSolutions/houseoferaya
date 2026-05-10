@@ -13,17 +13,26 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "db:test": "node test-db.js",
+    "db:tunnel": "./scripts/db-tunnel.sh start",
+    "db:tunnel:stop": "./scripts/db-tunnel.sh stop",
+    "db:tunnel:status": "./scripts/db-tunnel.sh status",
+    "db:tunnel:restart": "./scripts/db-tunnel.sh restart"
   },
   "dependencies": {
     "@prisma/client": "^6.8.2",
+    "bcryptjs": "^3.0.3",
     "framer-motion": "^11.2.10",
+    "image-size": "^2.0.2",
+    "jsonwebtoken": "^9.0.3",
     "lucide-react": "^0.378.0",
     "next": "^15.0.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20.14.8",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",

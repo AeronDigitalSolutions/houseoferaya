@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { ProductGrid } from "@/components/ProductGrid";
+import { CustomSelect } from "@/components/ui/CustomSelect";
 import { getCollectionBySlug, getProductsByCollectionSlug } from "@/lib/mock-data";
 
 export default async function CollectionBySlugPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -24,22 +25,34 @@ export default async function CollectionBySlugPage({ params }: { params: Promise
           <div className="space-y-2 text-sm text-stone-700">
             <label className="block">Price Range</label>
             <input type="range" className="w-full" />
-            <select className="w-full rounded-lg border border-stone-300 p-2">
-              <option>Metal Type</option>
-            </select>
-            <select className="w-full rounded-lg border border-stone-300 p-2">
-              <option>Gemstone</option>
-            </select>
+            <CustomSelect
+              options={[{ value: "metal", label: "Metal Type" }]}
+              defaultValue="metal"
+              buttonClassName="w-full rounded-lg border border-stone-300 p-2"
+              menuClassName="w-full"
+            />
+            <CustomSelect
+              options={[{ value: "gemstone", label: "Gemstone" }]}
+              defaultValue="gemstone"
+              buttonClassName="w-full rounded-lg border border-stone-300 p-2"
+              menuClassName="w-full"
+            />
           </div>
         </aside>
 
         <div className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-sm text-stone-600">{collectionProducts.length} products</p>
-            <select className="rounded-lg border border-stone-300 p-2 text-sm">
-              <option>Sort: Featured</option>
-              <option>Newest</option>
-            </select>
+            <CustomSelect
+              options={[
+                { value: "featured", label: "Sort: Featured" },
+                { value: "newest", label: "Newest" }
+              ]}
+              defaultValue="featured"
+              buttonClassName="rounded-lg border border-stone-300 p-2 text-sm"
+              menuClassName="w-[180px]"
+              align="right"
+            />
           </div>
           <ProductGrid products={collectionProducts} />
         </div>

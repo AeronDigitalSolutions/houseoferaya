@@ -1,21 +1,49 @@
 import { CheckoutForm } from "@/components/CheckoutForm";
 import { OrderSummary } from "@/components/OrderSummary";
-import { cartItems } from "@/lib/mock-data";
+import { redirect } from "next/navigation";
+import { getAuthUserFromCookies } from "@/lib/auth/session";
+import { prisma } from "@/lib/prisma";
+import { buildProductPricing, productPricingSelect } from "@/lib/product-pricing";
 
-export default function CheckoutPage() {
-  const subtotal = cartItems.reduce((sum, line) => sum + line.product.price * line.quantity, 0);
+const FREE_SHIPPING_THRESHOLD = 100000;
+
+export default async function CheckoutPage() {
+  const user = await getAuthUserFromCookies();
+  if (!user || !user.isActive) {
+    redirect("/login?next=/checkout");
+  }
+
+  const cart = await prisma.cart.findUnique({
+    where: { userId: user.id },
+    include: {
+      items: {
+        include: {
+          product: {
+            select: productPricingSelect
+          }
+        }
+      }
+    }
+  });
+
+  const subtotal =
+    cart?.items.reduce((sum, line) => {
+      const pricing = buildProductPricing(line.product);
+      return sum + pricing.finalPrice * line.quantity;
+    }, 0) ?? 0;
+  const shippingCharge = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : 199;
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
       <section className="space-y-4">
-        <h1 className="font-heading text-3xl sm:text-4xl text-stone-900">Checkout</h1>
+        <h1 className="font-heading text-3xl sm:text-4xl text-stone-900">Quick Checkout</h1>
         <CheckoutForm />
       </section>
 
       <div className="space-y-4">
-        <OrderSummary subtotal={subtotal} shippingCharge={199} discount={1500} ctaLabel="Place Order" showCta={false} />
+        <OrderSummary subtotal={subtotal} shippingCharge={shippingCharge} discount={0} ctaLabel="Place Order" showCta={false} />
         <div className="card p-4 text-sm text-stone-600">
-          Shipping charge calculation placeholder. Integrate with shipping provider API at order creation step.
+          Shipping calculation and ETA can be auto-fetched from shipping provider API at order creation.
         </div>
       </div>
     </div>

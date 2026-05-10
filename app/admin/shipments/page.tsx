@@ -1,4 +1,7 @@
-export default function AdminShipmentsPage() {
+import { requireAdminPermission } from "@/lib/auth/admin-guard";
+
+export default async function AdminShipmentsPage() {
+  await requireAdminPermission("canViewShipments");
   return (
     <div className="space-y-5">
       <h2 className="font-heading text-3xl sm:text-4xl text-stone-900">Shipments</h2>

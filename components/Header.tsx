@@ -41,6 +41,7 @@ const quickLinks = [
   { href: "/admin/orders", label: "Admin Orders" },
   { href: "/admin/shipments", label: "Admin Shipments" },
   { href: "/admin/payments", label: "Admin Payments" },
+  { href: "/admin/pricing-updates", label: "Admin Pricing Updates" },
   { href: "/admin/customers", label: "Admin Customers" }
 ];
 

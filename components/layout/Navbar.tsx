@@ -1,6 +1,6 @@
 "use client";
 
-import { Menu, Search, ShoppingBag, X } from "lucide-react";
+import { Menu, Search, ShoppingBag, UserRound, X } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
@@ -41,6 +41,7 @@ const quickLinks = [
   { href: "/admin/orders", label: "Admin Orders" },
   { href: "/admin/shipments", label: "Admin Shipments" },
   { href: "/admin/payments", label: "Admin Payments" },
+  { href: "/admin/pricing-updates", label: "Admin Pricing Updates" },
   { href: "/admin/customers", label: "Admin Customers" }
 ];
 
@@ -51,6 +52,7 @@ type NavbarProps = {
 export function Navbar({ visible = true }: NavbarProps) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
     const onScroll = () => setIsScrolled(window.scrollY > 10);
@@ -70,6 +72,26 @@ export function Navbar({ visible = true }: NavbarProps) {
       document.body.style.overflow = "";
     };
   }, [isOpen]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadAuthState = async () => {
+      try {
+        const response = await fetch("/api/auth/me", { cache: "no-store" });
+        if (!isMounted) return;
+        setIsAuthenticated(response.ok);
+      } catch {
+        if (!isMounted) return;
+        setIsAuthenticated(false);
+      }
+    };
+
+    void loadAuthState();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   return (
     <motion.header
@@ -139,9 +161,16 @@ export function Navbar({ visible = true }: NavbarProps) {
           <button className="hidden rounded-full p-2.5 transition hover:bg-white/70 md:inline-flex" aria-label="Search">
             <Search size={16} />
           </button>
-          <button className="rounded-full p-2.5 transition hover:bg-white/70" aria-label="Bag">
+          <Link href="/cart" className="rounded-full p-2.5 transition hover:bg-white/70" aria-label="Bag">
             <ShoppingBag size={16} />
-          </button>
+          </Link>
+          <Link
+            href={isAuthenticated ? "/account/profile" : "/login"}
+            className="rounded-full p-2.5 transition hover:bg-white/70"
+            aria-label={isAuthenticated ? "My Profile" : "Login or Signup"}
+          >
+            <UserRound size={16} />
+          </Link>
           <button className="rounded-full p-2.5 transition hover:bg-white/70 md:hidden" onClick={() => setIsOpen((v) => !v)}>
             {isOpen ? <X size={17} /> : <Menu size={17} />}
           </button>
@@ -192,4 +221,3 @@ export function Navbar({ visible = true }: NavbarProps) {
     </motion.header>
   );
 }
-

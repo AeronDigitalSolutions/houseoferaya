@@ -28,8 +28,6 @@ a {
 button {
   font: inherit;
   cursor: pointer;
-  border: 0;
-  background: transparent;
 }
 
 .container-base {

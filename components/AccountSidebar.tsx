@@ -7,7 +7,7 @@ const links = [
   { href: "/account/profile", label: "Profile" },
   { href: "/account/addresses", label: "Addresses" },
   { href: "/account/orders", label: "My Orders" },
-  { href: "/wishlist", label: "Wishlist" }
+  { href: "/account/wishlist", label: "Wishlist" }
 ];
 
 export function AccountSidebar() {

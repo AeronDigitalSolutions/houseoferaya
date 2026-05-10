@@ -5,16 +5,21 @@ import { ChevronDown } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 
-const desktopBanners = [
-  "/assets/banner/banner%201.png",
-  "/assets/banner/banner%202.png",
-  "/assets/banner/banner%203.png"
+type BannerAsset = {
+  publicUrl: string;
+  title?: string | null;
+};
+
+const fallbackDesktopBanners: BannerAsset[] = [
+  { publicUrl: "/assets/banner/banner%201.png", title: "House of Eraya desktop banner 1" },
+  { publicUrl: "/assets/banner/banner%202.png", title: "House of Eraya desktop banner 2" },
+  { publicUrl: "/assets/banner/banner%203.png", title: "House of Eraya desktop banner 3" }
 ];
 
-const mobileBanners = [
-  "/assets/banner/banner%20m1.png",
-  "/assets/banner/banner%20m2.png",
-  "/assets/banner/banner%20m3.png"
+const fallbackMobileBanners: BannerAsset[] = [
+  { publicUrl: "/assets/banner/banner%20m1.png", title: "House of Eraya mobile banner 1" },
+  { publicUrl: "/assets/banner/banner%20m2.png", title: "House of Eraya mobile banner 2" },
+  { publicUrl: "/assets/banner/banner%20m3.png", title: "House of Eraya mobile banner 3" }
 ];
 
 const SLIDE_INTERVAL_MS = 4200;
@@ -25,14 +30,56 @@ type BannerSliderProps = {
 
 export function BannerSlider({ immersive = false }: BannerSliderProps) {
   const [index, setIndex] = useState(0);
+  const [desktopBanners, setDesktopBanners] = useState<BannerAsset[]>(fallbackDesktopBanners);
+  const [mobileBanners, setMobileBanners] = useState<BannerAsset[]>(fallbackMobileBanners);
 
   useEffect(() => {
+    let mounted = true;
+    const loadBanners = async () => {
+      try {
+        const response = await fetch("/api/homepage-banners", { cache: "no-store" });
+        if (!response.ok) return;
+        const payload = (await response.json()) as {
+          success?: boolean;
+          desktop?: Array<{ publicUrl: string; title?: string | null }>;
+          mobile?: Array<{ publicUrl: string; title?: string | null }>;
+        };
+        if (!mounted || !payload.success) return;
+        const nextDesktop =
+          payload.desktop && payload.desktop.length > 0
+            ? payload.desktop.map((item) => ({ publicUrl: item.publicUrl, title: item.title || null }))
+            : fallbackDesktopBanners;
+        const nextMobile =
+          payload.mobile && payload.mobile.length > 0
+            ? payload.mobile.map((item) => ({ publicUrl: item.publicUrl, title: item.title || null }))
+            : fallbackMobileBanners;
+
+        setDesktopBanners(nextDesktop);
+        setMobileBanners(nextMobile);
+      } catch {
+        // Keep fallback banners if API is unavailable.
+      }
+    };
+
+    void loadBanners();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const cycleSize = Math.max(desktopBanners.length, mobileBanners.length, 1);
+    if (cycleSize <= 1) return;
+
     const timer = setInterval(() => {
-      setIndex((prev) => (prev + 1) % desktopBanners.length);
+      setIndex((prev) => (prev + 1) % cycleSize);
     }, SLIDE_INTERVAL_MS);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [desktopBanners.length, mobileBanners.length]);
+
+  const desktopBanner = desktopBanners[index % desktopBanners.length] || fallbackDesktopBanners[0];
+  const mobileBanner = mobileBanners[index % mobileBanners.length] || fallbackMobileBanners[0];
 
   const scrollToContent = () => {
     const section = document.getElementById("after-banner");
@@ -55,8 +102,8 @@ export function BannerSlider({ immersive = false }: BannerSliderProps) {
                   className="absolute inset-0"
                 >
                   <Image
-                    src={desktopBanners[index]}
-                    alt={`House of Eraya banner ${index + 1}`}
+                    src={desktopBanner.publicUrl}
+                    alt={desktopBanner.title || `House of Eraya banner ${index + 1}`}
                     fill
                     priority={index === 0}
                     className="object-cover"
@@ -96,8 +143,8 @@ export function BannerSlider({ immersive = false }: BannerSliderProps) {
                   className="absolute inset-0"
                 >
                   <Image
-                    src={mobileBanners[index]}
-                    alt={`House of Eraya mobile banner ${index + 1}`}
+                    src={mobileBanner.publicUrl}
+                    alt={mobileBanner.title || `House of Eraya mobile banner ${index + 1}`}
                     fill
                     priority={index === 0}
                     className="object-cover"
@@ -141,8 +188,8 @@ export function BannerSlider({ immersive = false }: BannerSliderProps) {
               className="absolute inset-0"
             >
               <Image
-                src={desktopBanners[index]}
-                alt={`House of Eraya banner ${index + 1}`}
+                src={desktopBanner.publicUrl}
+                alt={desktopBanner.title || `House of Eraya banner ${index + 1}`}
                 fill
                 priority={index === 0}
                 className="object-cover"
@@ -163,8 +210,8 @@ export function BannerSlider({ immersive = false }: BannerSliderProps) {
               className="absolute inset-0"
             >
               <Image
-                src={mobileBanners[index]}
-                alt={`House of Eraya mobile banner ${index + 1}`}
+                src={mobileBanner.publicUrl}
+                alt={mobileBanner.title || `House of Eraya mobile banner ${index + 1}`}
                 fill
                 priority={index === 0}
                 className="object-cover"

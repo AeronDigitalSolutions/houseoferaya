@@ -1,14 +1,37 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { StatusBadge } from "@/components/StatusBadge";
-import { getOrderById } from "@/lib/mock-data";
+import { getAuthUserFromCookies } from "@/lib/auth/session";
+import { prisma } from "@/lib/prisma";
 
 export default async function OrderConfirmationPage({ params }: { params: Promise<{ orderId: string }> }) {
+  const user = await getAuthUserFromCookies();
+  if (!user || !user.isActive) {
+    redirect("/login");
+  }
+
   const { orderId } = await params;
-  const order = getOrderById(orderId);
+  const order = await prisma.order.findFirst({
+    where: {
+      userId: user.id,
+      OR: [{ id: orderId }, { orderNumber: orderId }]
+    },
+    select: {
+      id: true,
+      orderNumber: true,
+      orderStatus: true,
+      paymentStatus: true,
+      createdAt: true,
+      shippingStatus: true
+    }
+  });
+
   if (!order) {
     notFound();
   }
+
+  const estimatedDelivery = new Date(order.createdAt);
+  estimatedDelivery.setDate(estimatedDelivery.getDate() + 5);
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -20,7 +43,7 @@ export default async function OrderConfirmationPage({ params }: { params: Promis
           <StatusBadge status={order.orderStatus} />
           <StatusBadge status={order.paymentStatus} />
         </div>
-        <p className="text-sm text-stone-600">Estimated Delivery: {order.estimatedDelivery}</p>
+        <p className="text-sm text-stone-600">Estimated Delivery: {estimatedDelivery.toLocaleDateString("en-IN")}</p>
         <p className="text-sm text-stone-600">Placeholder success/failure message based on payment webhook status.</p>
 
         <div className="flex flex-wrap gap-3">

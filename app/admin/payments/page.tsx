@@ -5,7 +5,10 @@ const paymentLogs = [
   { id: "pay_2", order: "HOE-1002", razorpayOrderId: "order_yyy", razorpayPaymentId: "pay_yyy", status: "AUTHORIZED" as const }
 ];
 
-export default function AdminPaymentsPage() {
+import { requireAdminPermission } from "@/lib/auth/admin-guard";
+
+export default async function AdminPaymentsPage() {
+  await requireAdminPermission("canViewPayments");
   return (
     <div className="space-y-5">
       <h2 className="font-heading text-3xl sm:text-4xl text-stone-900">Payments</h2>

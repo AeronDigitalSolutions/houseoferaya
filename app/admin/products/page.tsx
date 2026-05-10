@@ -1,40 +1,44 @@
-import { products } from "@/lib/mock-data";
+import { requireAdminPermission } from "@/lib/auth/admin-guard";
+import { prisma } from "@/lib/prisma";
+import { buildProductPricing, productPricingSelect } from "@/lib/product-pricing";
+import { AdminProductsManager } from "@/components/admin/products/AdminProductsManager";
 
-export default function AdminProductsPage() {
+export default async function AdminProductsPage() {
+  const admin = await requireAdminPermission("canViewProducts");
+
+  const [categories, products] = await Promise.all([
+    prisma.category.findMany({
+      where: { isActive: true },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, slug: true }
+    }),
+    prisma.product.findMany({
+      orderBy: { createdAt: "desc" },
+      select: productPricingSelect
+    })
+  ]);
+
+  const initialProducts = products.map((product) => {
+    const pricing = buildProductPricing(product);
+    return {
+      id: product.id,
+      name: product.name,
+      slug: product.slug,
+      sku: product.sku,
+      stock: product.stock,
+      baseMetal: product.baseMetal,
+      purity: product.purity,
+      weightGrams: Number(product.weightGrams),
+      finalPrice: pricing.finalPrice,
+      isActive: product.isActive
+    };
+  });
+
   return (
-    <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <h2 className="font-heading text-3xl sm:text-4xl text-stone-900">Products</h2>
-        <button className="rounded-full bg-stone-900 px-5 py-2 text-sm text-white">Add Product</button>
-      </div>
-
-      <div className="card overflow-x-auto">
-        <table className="min-w-[720px] text-left text-sm">
-          <thead className="border-b border-stone-200 bg-stone-100">
-            <tr>
-              <th className="px-4 py-3">Name</th>
-              <th className="px-4 py-3">SKU</th>
-              <th className="px-4 py-3">Price</th>
-              <th className="px-4 py-3">Stock</th>
-              <th className="px-4 py-3">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {products.map((product) => (
-              <tr key={product.id} className="border-b border-stone-100">
-                <td className="px-4 py-3">{product.name}</td>
-                <td className="px-4 py-3">{product.sku}</td>
-                <td className="px-4 py-3">{product.price}</td>
-                <td className="px-4 py-3">{product.stock}</td>
-                <td className="px-4 py-3">
-                  <button className="mr-2 text-xs underline">Edit</button>
-                  <button className="text-xs text-rose-700 underline">Delete</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
+    <AdminProductsManager
+      categories={categories}
+      initialProducts={initialProducts}
+      canEditProducts={admin.role === "SUPER_ADMIN" || admin.permissions.canEditProducts}
+    />
   );
 }
