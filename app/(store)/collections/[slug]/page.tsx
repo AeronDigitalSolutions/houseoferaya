@@ -5,6 +5,8 @@ import { buildProductPricing, productPricingSelect } from "@/lib/product-pricing
 import { isSignatureProductSlug } from "@/lib/signature-piece";
 import type { Category, Product } from "@/lib/types";
 
+export const dynamic = "force-dynamic";
+
 export default async function CollectionBySlugPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
 
