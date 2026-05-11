@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { Boxes, ClipboardList, Images, IndianRupee, PackageSearch, ShieldCheck, Truck, Users, Wallet } from "lucide-react";
+import { Boxes, ClipboardList, GalleryVerticalEnd, Images, IndianRupee, PackageSearch, ShieldCheck, Truck, Users, Wallet } from "lucide-react";
 import { requireAdminPermission } from "@/lib/auth/admin-guard";
 
 const quickLinks = [
   { href: "/admin/products", label: "Products", Icon: Boxes, key: "canViewProducts" as const },
+  { href: "/admin/categories", label: "Categories", Icon: GalleryVerticalEnd, key: "canViewProducts" as const },
   { href: "/admin/orders", label: "Orders", Icon: ClipboardList, key: "canViewOrders" as const },
   { href: "/admin/shipments", label: "Shipments", Icon: Truck, key: "canViewShipments" as const },
   { href: "/admin/payments", label: "Payments", Icon: Wallet, key: "canViewPayments" as const },

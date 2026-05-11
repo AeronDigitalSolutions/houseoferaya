@@ -66,7 +66,14 @@ export function BannerCard({
       <div className="grid gap-4 lg:grid-cols-[260px_1fr] xl:grid-cols-[320px_1fr]">
         <div className="overflow-hidden rounded-2xl border border-stone-200 bg-stone-100">
           <div className={`relative w-full ${banner.deviceType === "DESKTOP" ? "aspect-[16/9]" : "aspect-[9/16]"}`}>
-            <Image src={banner.publicUrl} alt={banner.title || banner.fileName} fill className="object-cover" sizes="(max-width: 1024px) 100vw, 320px" />
+            <Image
+              src={banner.publicUrl}
+              alt={banner.title || banner.fileName}
+              fill
+              unoptimized
+              className="object-cover"
+              sizes="(max-width: 1024px) 100vw, 320px"
+            />
           </div>
         </div>
 
@@ -179,4 +186,3 @@ export function BannerCard({
     </article>
   );
 }
-

@@ -1,4 +1,5 @@
 import type { CartLine, Category, Order, Product, TimelineEvent } from "@/lib/types";
+import { isSignatureProductSlug } from "@/lib/signature-piece";
 
 export const categories: Category[] = [
   {
@@ -47,7 +48,8 @@ export const products: Product[] = [
     certification: "IGI Certified",
     categoryId: "cat-ring",
     image: "/assets/signature-ring.jpg",
-    isActive: true
+    isActive: true,
+    isSignature: true
   },
   {
     id: "prod-2",
@@ -64,7 +66,8 @@ export const products: Product[] = [
     certification: "In-house Certified",
     categoryId: "cat-ring",
     image: "/assets/collection-ring-vermilion.jpg",
-    isActive: true
+    isActive: true,
+    isSignature: true
   },
   {
     id: "prod-3",
@@ -80,7 +83,8 @@ export const products: Product[] = [
     certification: "BIS Hallmarked",
     categoryId: "cat-necklace",
     image: "/assets/collection-aura.jpg",
-    isActive: true
+    isActive: true,
+    isSignature: true
   },
   {
     id: "prod-4",
@@ -131,6 +135,12 @@ export const products: Product[] = [
     isActive: true
   }
 ];
+
+products.forEach((product) => {
+  if (product.isSignature == null) {
+    product.isSignature = isSignatureProductSlug(product.slug);
+  }
+});
 
 export const cartItems: CartLine[] = [
   {

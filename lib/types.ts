@@ -14,6 +14,7 @@ export type Product = {
   categoryId: string;
   image: string;
   isActive: boolean;
+  isSignature?: boolean;
   pricingBreakdown?: {
     metalRate: number;
     metalPrice: number;

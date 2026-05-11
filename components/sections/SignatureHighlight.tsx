@@ -79,7 +79,7 @@ export function SignatureHighlight() {
 
             <div className="mt-9">
               <Link
-                href="#"
+                href="/signature-pieces/celeste-diamond-ring"
                 className="mx-auto inline-flex w-full max-w-[23rem] items-center justify-between rounded-full border border-[#c99b56] bg-gradient-to-r from-[#0a1e5f] via-[#123c9c] to-[#0b235f] px-8 py-4 text-sm font-semibold uppercase tracking-[0.22em] text-[#f4efe6] shadow-[0_15px_28px_rgba(11,21,52,0.3)] transition duration-300 hover:-translate-y-0.5"
               >
                 <span className="inline-flex items-center gap-3">
@@ -115,4 +115,3 @@ export function SignatureHighlight() {
     </section>
   );
 }
-

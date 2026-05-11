@@ -1,44 +1,169 @@
 "use client";
 
+import Image from "next/image";
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { ImagePlus, Monitor, Smartphone } from "lucide-react";
-import { BannerCard, type HomepageBannerRecord } from "@/components/admin/homepage-media/BannerCard";
+import {
+  ArrowDown,
+  ArrowUp,
+  Eye,
+  EyeOff,
+  ImagePlus,
+  Monitor,
+  Pencil,
+  Save,
+  Smartphone,
+  Trash2,
+  Upload,
+  X
+} from "lucide-react";
 
 type DeviceType = "DESKTOP" | "MOBILE";
 type Message = { type: "success" | "error"; text: string } | null;
+
+type HomepageBannerRecord = {
+  id: string;
+  deviceType: DeviceType;
+  title: string | null;
+  fileName: string;
+  publicUrl: string;
+  width: number;
+  height: number;
+  sortOrder: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
 
 const dimensionNote: Record<DeviceType, string> = {
   DESKTOP: "Desktop banners must follow a 16:9 ratio (landscape).",
   MOBILE: "Mobile banners must follow a 9:16 ratio (portrait)."
 };
 
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat("en-IN", {
+    dateStyle: "medium",
+    timeStyle: "short"
+  }).format(new Date(value));
+}
+
+function ModalShell({
+  title,
+  subtitle,
+  onClose,
+  children,
+  maxWidth = "max-w-3xl"
+}: {
+  title: string;
+  subtitle?: string;
+  onClose: () => void;
+  children: React.ReactNode;
+  maxWidth?: string;
+}) {
+  return (
+    <div className="fixed inset-0 z-[120] flex items-end bg-black/45 p-0 backdrop-blur-[2px] sm:items-center sm:justify-center sm:p-6" onClick={onClose}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        className={`w-full ${maxWidth} rounded-t-3xl border border-stone-200 bg-[#f8f5f0] p-5 shadow-2xl sm:rounded-3xl sm:p-6`}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="mb-5 flex items-start justify-between gap-4">
+          <div>
+            <h3 className="font-heading text-2xl text-stone-900">{title}</h3>
+            {subtitle ? <p className="mt-1 text-sm text-stone-600">{subtitle}</p> : null}
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-stone-300 bg-white text-stone-700"
+            aria-label="Close"
+          >
+            <X size={18} />
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function DevicePill({
+  active,
+  icon,
+  label,
+  onClick
+}: {
+  active: boolean;
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`inline-flex items-center justify-center gap-2 rounded-full border px-4 py-2.5 text-sm font-medium transition ${
+        active
+          ? "border-stone-900 bg-stone-900 text-white"
+          : "border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
+      }`}
+    >
+      {icon}
+      {label}
+    </button>
+  );
+}
+
 export function HomepageMediaManager() {
-  const [deviceType, setDeviceType] = useState<DeviceType>("DESKTOP");
   const [banners, setBanners] = useState<HomepageBannerRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [message, setMessage] = useState<Message>(null);
 
-  const [newTitle, setNewTitle] = useState("");
-  const [newFile, setNewFile] = useState<File | null>(null);
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [uploadDeviceType, setUploadDeviceType] = useState<DeviceType>("DESKTOP");
+  const [uploadTitle, setUploadTitle] = useState("");
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+
+  const [selectedBannerId, setSelectedBannerId] = useState<string | null>(null);
   const [titleDrafts, setTitleDrafts] = useState<Record<string, string>>({});
   const [replaceFiles, setReplaceFiles] = useState<Record<string, File | null>>({});
 
-  const visibleBanners = useMemo(
-    () =>
-      banners
-        .filter((item) => item.deviceType === deviceType)
-        .sort((a, b) => a.sortOrder - b.sortOrder),
-    [banners, deviceType]
+  const sortedBanners = useMemo(
+    () => [...banners].sort((a, b) => a.sortOrder - b.sortOrder || a.updatedAt.localeCompare(b.updatedAt)),
+    [banners]
   );
 
-  const activeCount = useMemo(() => visibleBanners.filter((item) => item.isActive).length, [visibleBanners]);
+  const desktopBanners = useMemo(
+    () => sortedBanners.filter((item) => item.deviceType === "DESKTOP"),
+    [sortedBanners]
+  );
+
+  const mobileBanners = useMemo(
+    () => sortedBanners.filter((item) => item.deviceType === "MOBILE"),
+    [sortedBanners]
+  );
+
+  const selectedBanner = useMemo(
+    () => sortedBanners.find((item) => item.id === selectedBannerId) || null,
+    [sortedBanners, selectedBannerId]
+  );
+
+  const selectedGroup = selectedBanner
+    ? selectedBanner.deviceType === "DESKTOP"
+      ? desktopBanners
+      : mobileBanners
+    : [];
+
+  const selectedIndex = selectedBanner
+    ? selectedGroup.findIndex((item) => item.id === selectedBanner.id)
+    : -1;
 
   const loadBanners = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/admin/homepage-banners?deviceType=${deviceType}`, { cache: "no-store" });
+      const response = await fetch("/api/admin/homepage-banners", { cache: "no-store" });
       const payload = (await response.json()) as {
         success: boolean;
         message?: string;
@@ -53,8 +178,11 @@ export function HomepageMediaManager() {
 
       const list = payload.banners || [];
       setBanners(list);
-      setTitleDrafts(Object.fromEntries(list.map((item) => [item.id, item.title || ""])));
-      setReplaceFiles({});
+      setTitleDrafts((prev) => {
+        const next = { ...prev };
+        for (const item of list) next[item.id] = prev[item.id] ?? item.title ?? "";
+        return next;
+      });
     } catch {
       setMessage({ type: "error", text: "Unable to fetch homepage banners." });
       setBanners([]);
@@ -65,41 +193,7 @@ export function HomepageMediaManager() {
 
   useEffect(() => {
     void loadBanners();
-  }, [deviceType]);
-
-  const uploadBanner = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!newFile) {
-      setMessage({ type: "error", text: "Please choose a banner image first." });
-      return;
-    }
-
-    setSaving(true);
-    setMessage(null);
-    try {
-      const formData = new FormData();
-      formData.set("deviceType", deviceType);
-      formData.set("title", newTitle);
-      formData.set("file", newFile);
-
-      const response = await fetch("/api/admin/homepage-banners", { method: "POST", body: formData });
-      const payload = (await response.json()) as { success: boolean; message?: string };
-
-      if (!response.ok || !payload.success) {
-        setMessage({ type: "error", text: payload.message || "Failed to upload banner." });
-        return;
-      }
-
-      setMessage({ type: "success", text: "Banner uploaded successfully." });
-      setNewTitle("");
-      setNewFile(null);
-      await loadBanners();
-    } catch {
-      setMessage({ type: "error", text: "Failed to upload banner." });
-    } finally {
-      setSaving(false);
-    }
-  };
+  }, []);
 
   const mutateBanner = async (
     bannerId: string,
@@ -120,6 +214,121 @@ export function HomepageMediaManager() {
     }
   };
 
+  const uploadBanner = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!uploadFile) {
+      setMessage({ type: "error", text: "Please choose a banner image first." });
+      return;
+    }
+
+    setSaving(true);
+    setMessage(null);
+    try {
+      const formData = new FormData();
+      formData.set("deviceType", uploadDeviceType);
+      formData.set("title", uploadTitle);
+      formData.set("file", uploadFile);
+
+      const response = await fetch("/api/admin/homepage-banners", { method: "POST", body: formData });
+      const payload = (await response.json()) as { success: boolean; message?: string };
+
+      if (!response.ok || !payload.success) {
+        setMessage({ type: "error", text: payload.message || "Failed to upload banner." });
+        return;
+      }
+
+      setMessage({ type: "success", text: "Banner uploaded successfully." });
+      setUploadTitle("");
+      setUploadFile(null);
+      setUploadModalOpen(false);
+      await loadBanners();
+    } catch {
+      setMessage({ type: "error", text: "Failed to upload banner." });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const openUploadFor = (device: DeviceType) => {
+    setUploadDeviceType(device);
+    setUploadTitle("");
+    setUploadFile(null);
+    setUploadModalOpen(true);
+  };
+
+  const renderBannerSection = ({
+    label,
+    device,
+    list
+  }: {
+    label: string;
+    device: DeviceType;
+    list: HomepageBannerRecord[];
+  }) => (
+    <section className="card p-5 sm:p-6">
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h3 className="font-heading text-xl text-stone-900 sm:text-2xl">{label}</h3>
+          <p className="mt-1 text-sm text-stone-600">{dimensionNote[device]}</p>
+        </div>
+        <div className="inline-flex items-center rounded-full border border-stone-200 bg-stone-50 px-3 py-1.5 text-xs font-medium text-stone-700">
+          Active {list.filter((item) => item.isActive).length} / {list.length}
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="rounded-2xl border border-stone-200 bg-stone-50 p-5 text-sm text-stone-600">Loading banners...</div>
+      ) : list.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-stone-300 bg-stone-50/60 p-8 text-center">
+          <p className="text-sm text-stone-600">No banners uploaded yet.</p>
+          <button
+            type="button"
+            onClick={() => openUploadFor(device)}
+            className="mt-3 inline-flex items-center justify-center gap-2 rounded-full border border-stone-900 bg-stone-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-black"
+          >
+            <ImagePlus size={15} />
+            Upload {device === "DESKTOP" ? "Desktop" : "Mobile"} Banner
+          </button>
+        </div>
+      ) : (
+        <div className={`grid gap-4 ${device === "DESKTOP" ? "sm:grid-cols-2" : "sm:grid-cols-2 lg:grid-cols-3"}`}>
+          {list.map((banner) => (
+            <button
+              key={banner.id}
+              type="button"
+              onClick={() => setSelectedBannerId(banner.id)}
+              className="group overflow-hidden rounded-2xl border border-stone-200 bg-white text-left transition hover:border-stone-400 hover:shadow-md"
+            >
+              <div className={`relative w-full ${device === "DESKTOP" ? "aspect-[16/9]" : "aspect-[9/16]"}`}>
+                <Image
+                  src={banner.publicUrl}
+                  alt={banner.title || banner.fileName}
+                  fill
+                  unoptimized
+                  className="object-cover transition duration-300 group-hover:scale-[1.02]"
+                  sizes="(max-width: 1024px) 100vw, 420px"
+                />
+                <span
+                  className={`absolute right-3 top-3 rounded-full border px-2 py-1 text-[11px] font-medium ${
+                    banner.isActive
+                      ? "border-emerald-200 bg-emerald-100/90 text-emerald-700"
+                      : "border-stone-300 bg-white/90 text-stone-600"
+                  }`}
+                >
+                  {banner.isActive ? "Active" : "Hidden"}
+                </span>
+              </div>
+              <div className="p-3">
+                <p className="line-clamp-1 text-sm font-medium text-stone-900">{banner.title || banner.fileName}</p>
+                <p className="mt-1 text-xs text-stone-500">{banner.width} × {banner.height} • {formatDate(banner.updatedAt)}</p>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+
   return (
     <div className="space-y-5">
       <section className="card p-5 sm:p-6">
@@ -127,202 +336,314 @@ export function HomepageMediaManager() {
           <div>
             <h2 className="font-heading text-3xl text-stone-900 sm:text-4xl">Homepage Banners & Slider Media</h2>
             <p className="mt-2 max-w-3xl text-sm text-stone-600">
-              Manage desktop and mobile hero banners for the homepage slider. Uploaded images are saved directly in
-              <code className="ml-1 rounded bg-stone-100 px-1.5 py-0.5 text-[12px] text-stone-700">public/uploads/homepage-banners</code>.
+              Manage desktop and mobile hero banners for the homepage slider. Click any banner to open details and actions.
             </p>
           </div>
-          <div className="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-700">
-            Active in this tab: <span className="font-semibold text-stone-900">{activeCount}</span> / {visibleBanners.length}
-          </div>
-        </div>
-
-        <div className="mt-5 grid gap-3 sm:grid-cols-2">
           <button
             type="button"
-            onClick={() => setDeviceType("DESKTOP")}
-            className={`inline-flex items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-medium transition ${
-              deviceType === "DESKTOP"
-                ? "border-stone-900 bg-stone-900 text-white"
-                : "border-stone-300 bg-white text-stone-700 hover:bg-stone-50"
-            }`}
+            onClick={() => openUploadFor("DESKTOP")}
+            className="inline-flex items-center justify-center gap-2 rounded-full border border-stone-900 bg-stone-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-black"
           >
-            <Monitor size={16} />
-            Desktop Slider
-          </button>
-          <button
-            type="button"
-            onClick={() => setDeviceType("MOBILE")}
-            className={`inline-flex items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-medium transition ${
-              deviceType === "MOBILE"
-                ? "border-stone-900 bg-stone-900 text-white"
-                : "border-stone-300 bg-white text-stone-700 hover:bg-stone-50"
-            }`}
-          >
-            <Smartphone size={16} />
-            Mobile Slider
+            <ImagePlus size={15} />
+            Upload New Banner
           </button>
         </div>
 
-        <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          <p className="font-medium">Upload rule</p>
-          <p className="mt-1">{dimensionNote[deviceType]}</p>
-        </div>
+        {message ? (
+          <p className={`mt-4 text-sm ${message.type === "success" ? "text-emerald-700" : "text-rose-700"}`}>{message.text}</p>
+        ) : null}
       </section>
 
-      <section className="card p-5 sm:p-6">
-        <h3 className="font-heading text-2xl text-stone-900">Upload New Banner</h3>
-        <p className="mt-1 text-sm text-stone-600">Keep titles short for easy internal identification. Title is optional.</p>
-        <form className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto] lg:grid-cols-[1fr_1fr_auto]" onSubmit={uploadBanner}>
-          <input
-            value={newTitle}
-            onChange={(event) => setNewTitle(event.target.value)}
-            placeholder="Banner title (optional)"
-            className="rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-sm text-stone-800 outline-none transition focus:border-stone-500"
-          />
+      {renderBannerSection({ label: "Desktop Slider", device: "DESKTOP", list: desktopBanners })}
+      {renderBannerSection({ label: "Mobile Slider", device: "MOBILE", list: mobileBanners })}
 
-          <label className="inline-flex cursor-pointer items-center rounded-xl border border-dashed border-stone-300 bg-white px-3 py-2.5 text-sm text-stone-700 transition hover:border-stone-400">
+      {uploadModalOpen ? (
+        <ModalShell
+          title="Upload New Banner"
+          subtitle="Choose banner type and upload image. Ratio rules are enforced automatically."
+          onClose={() => {
+            if (saving) return;
+            setUploadModalOpen(false);
+          }}
+        >
+          <form className="space-y-4" onSubmit={uploadBanner}>
+            <div className="flex flex-wrap gap-2">
+              <DevicePill
+                active={uploadDeviceType === "DESKTOP"}
+                icon={<Monitor size={15} />}
+                label="Desktop"
+                onClick={() => setUploadDeviceType("DESKTOP")}
+              />
+              <DevicePill
+                active={uploadDeviceType === "MOBILE"}
+                icon={<Smartphone size={15} />}
+                label="Mobile"
+                onClick={() => setUploadDeviceType("MOBILE")}
+              />
+            </div>
+
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              <p className="font-medium">Upload rule</p>
+              <p className="mt-1">{dimensionNote[uploadDeviceType]}</p>
+            </div>
+
             <input
-              type="file"
-              accept="image/png,image/jpeg,image/webp,image/avif"
-              className="sr-only"
-              onChange={(event) => setNewFile(event.target.files?.[0] || null)}
+              value={uploadTitle}
+              onChange={(event) => setUploadTitle(event.target.value)}
+              placeholder="Banner title (optional)"
+              className="w-full rounded-xl border border-stone-300 bg-white px-3 py-3 text-sm text-stone-800 outline-none transition focus:border-stone-500"
             />
-            <ImagePlus size={15} className="mr-2" />
-            {newFile ? newFile.name : "Choose image"}
-          </label>
 
-          <button
-            type="submit"
-            disabled={saving}
-            className="rounded-xl bg-stone-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {saving ? "Uploading..." : "Upload Banner"}
-          </button>
-        </form>
-      </section>
+            <label className="inline-flex w-full cursor-pointer items-center rounded-xl border border-dashed border-stone-300 bg-white px-3 py-3 text-sm text-stone-700 transition hover:border-stone-400">
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/avif"
+                className="sr-only"
+                onChange={(event) => setUploadFile(event.target.files?.[0] || null)}
+              />
+              <Upload size={15} className="mr-2" />
+              {uploadFile ? uploadFile.name : "Choose image"}
+            </label>
 
-      {message ? (
-        <p className={`text-sm ${message.type === "success" ? "text-emerald-700" : "text-rose-700"}`}>{message.text}</p>
+            <div className="flex flex-wrap justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setUploadModalOpen(false)}
+                disabled={saving}
+                className="rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100 disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={saving}
+                className="rounded-full bg-stone-900 px-5 py-2 text-sm font-medium text-white transition hover:bg-black disabled:opacity-60"
+              >
+                {saving ? "Uploading..." : "Upload Banner"}
+              </button>
+            </div>
+          </form>
+        </ModalShell>
       ) : null}
 
-      <section className="space-y-3">
-        {loading ? (
-          <div className="card p-5 text-sm text-stone-600">Loading banners...</div>
-        ) : visibleBanners.length === 0 ? (
-          <div className="card p-6 text-sm text-stone-600">
-            No banners added for this view yet. Upload the first {deviceType === "DESKTOP" ? "desktop" : "mobile"} banner.
-          </div>
-        ) : (
-          visibleBanners.map((banner, index) => (
-            <BannerCard
-              key={banner.id}
-              banner={banner}
-              isFirst={index === 0}
-              isLast={index === visibleBanners.length - 1}
-              busy={busyId === banner.id}
-              titleDraft={titleDrafts[banner.id] ?? ""}
-              replaceFile={replaceFiles[banner.id] || null}
-              onTitleDraftChange={(value) => {
-                setTitleDrafts((prev) => ({ ...prev, [banner.id]: value }));
-              }}
-              onSaveTitle={() =>
-                void mutateBanner(banner.id, async () => {
-                  const response = await fetch("/api/admin/homepage-banners", {
-                    method: "PATCH",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      action: "update-title",
-                      id: banner.id,
-                      title: titleDrafts[banner.id] ?? ""
-                    })
-                  });
-                  const payload = (await response.json()) as { success: boolean; message?: string };
-                  return { ok: response.ok && payload.success, message: payload.message };
-                })
-              }
-              onToggleActive={() =>
-                void mutateBanner(banner.id, async () => {
-                  const response = await fetch("/api/admin/homepage-banners", {
-                    method: "PATCH",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      action: "toggle-active",
-                      id: banner.id,
-                      isActive: !banner.isActive
-                    })
-                  });
-                  const payload = (await response.json()) as { success: boolean; message?: string };
-                  return { ok: response.ok && payload.success, message: payload.message };
-                })
-              }
-              onMoveUp={() =>
-                void mutateBanner(banner.id, async () => {
-                  const response = await fetch("/api/admin/homepage-banners", {
-                    method: "PATCH",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      action: "reorder",
-                      id: banner.id,
-                      direction: "up"
-                    })
-                  });
-                  const payload = (await response.json()) as { success: boolean; message?: string };
-                  return { ok: response.ok && payload.success, message: payload.message };
-                })
-              }
-              onMoveDown={() =>
-                void mutateBanner(banner.id, async () => {
-                  const response = await fetch("/api/admin/homepage-banners", {
-                    method: "PATCH",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      action: "reorder",
-                      id: banner.id,
-                      direction: "down"
-                    })
-                  });
-                  const payload = (await response.json()) as { success: boolean; message?: string };
-                  return { ok: response.ok && payload.success, message: payload.message };
-                })
-              }
-              onDelete={() => {
-                if (!window.confirm("Delete this banner? This cannot be undone.")) return;
-                void mutateBanner(banner.id, async () => {
-                  const response = await fetch(`/api/admin/homepage-banners?id=${banner.id}`, {
-                    method: "DELETE"
-                  });
-                  const payload = (await response.json()) as { success: boolean; message?: string };
-                  return { ok: response.ok && payload.success, message: payload.message };
-                });
-              }}
-              onPickReplaceFile={(file) => {
-                setReplaceFiles((prev) => ({ ...prev, [banner.id]: file }));
-              }}
-              onReplaceImage={() =>
-                void mutateBanner(banner.id, async () => {
-                  const file = replaceFiles[banner.id];
-                  if (!file) return { ok: false, message: "Please choose a replacement file first." };
+      {selectedBanner ? (
+        <ModalShell
+          title={selectedBanner.deviceType === "DESKTOP" ? "Desktop Banner Details" : "Mobile Banner Details"}
+          subtitle="Manage title, visibility, order, replacement, and deletion."
+          onClose={() => {
+            if (busyId) return;
+            setSelectedBannerId(null);
+          }}
+          maxWidth="max-w-5xl"
+        >
+          <div className="grid gap-5 lg:grid-cols-[1.1fr_1fr]">
+            <div className="overflow-hidden rounded-2xl border border-stone-200 bg-stone-100">
+              <div className={`relative w-full ${selectedBanner.deviceType === "DESKTOP" ? "aspect-[16/9]" : "aspect-[9/16]"}`}>
+                <Image
+                  src={selectedBanner.publicUrl}
+                  alt={selectedBanner.title || selectedBanner.fileName}
+                  fill
+                  unoptimized
+                  className="object-cover"
+                  sizes="(max-width: 1024px) 100vw, 620px"
+                />
+              </div>
+            </div>
 
-                  const formData = new FormData();
-                  formData.set("id", banner.id);
-                  formData.set("title", titleDrafts[banner.id] ?? "");
-                  formData.set("file", file);
+            <div className="space-y-4">
+              <div className="rounded-2xl border border-stone-200 bg-white p-4">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <p className="text-xs uppercase tracking-[0.16em] text-stone-500">Banner Info</p>
+                  <span
+                    className={`rounded-full border px-3 py-1 text-xs font-medium ${
+                      selectedBanner.isActive
+                        ? "border-emerald-200 bg-emerald-100 text-emerald-700"
+                        : "border-stone-300 bg-stone-100 text-stone-600"
+                    }`}
+                  >
+                    {selectedBanner.isActive ? "Active" : "Hidden"}
+                  </span>
+                </div>
+                <p className="text-sm text-stone-700">{selectedBanner.fileName}</p>
+                <p className="mt-1 text-xs text-stone-500">
+                  {selectedBanner.width} × {selectedBanner.height} • Updated {formatDate(selectedBanner.updatedAt)}
+                </p>
+              </div>
 
-                  const response = await fetch("/api/admin/homepage-banners", {
-                    method: "PUT",
-                    body: formData
-                  });
-                  const payload = (await response.json()) as { success: boolean; message?: string };
-                  if (response.ok && payload.success) {
-                    setReplaceFiles((prev) => ({ ...prev, [banner.id]: null }));
+              <div className="rounded-2xl border border-stone-200 bg-white p-4">
+                <p className="mb-2 text-xs uppercase tracking-[0.16em] text-stone-500">Title</p>
+                <div className="flex gap-2">
+                  <input
+                    value={titleDrafts[selectedBanner.id] ?? selectedBanner.title ?? ""}
+                    onChange={(event) => setTitleDrafts((prev) => ({ ...prev, [selectedBanner.id]: event.target.value }))}
+                    placeholder="Banner title (optional)"
+                    className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-sm text-stone-800 outline-none transition focus:border-stone-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void mutateBanner(selectedBanner.id, async () => {
+                        const response = await fetch("/api/admin/homepage-banners", {
+                          method: "PATCH",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            action: "update-title",
+                            id: selectedBanner.id,
+                            title: titleDrafts[selectedBanner.id] ?? ""
+                          })
+                        });
+                        const payload = (await response.json()) as { success: boolean; message?: string };
+                        return { ok: response.ok && payload.success, message: payload.message };
+                      })
+                    }
+                    disabled={busyId === selectedBanner.id}
+                    className="inline-flex items-center gap-2 rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-sm text-stone-700 transition hover:bg-stone-100 disabled:opacity-60"
+                  >
+                    <Save size={14} /> Save
+                  </button>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-stone-200 bg-white p-4">
+                <p className="mb-2 text-xs uppercase tracking-[0.16em] text-stone-500">Replace Image</p>
+                <label className="inline-flex w-full cursor-pointer items-center rounded-xl border border-dashed border-stone-300 bg-white px-3 py-2.5 text-sm text-stone-700 transition hover:border-stone-400">
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,image/avif"
+                    className="sr-only"
+                    onChange={(event) =>
+                      setReplaceFiles((prev) => ({ ...prev, [selectedBanner.id]: event.target.files?.[0] || null }))
+                    }
+                  />
+                  <Upload size={15} className="mr-2" />
+                  {replaceFiles[selectedBanner.id]?.name || "Select new image"}
+                </label>
+                <button
+                  type="button"
+                  onClick={() =>
+                    void mutateBanner(selectedBanner.id, async () => {
+                      const file = replaceFiles[selectedBanner.id];
+                      if (!file) return { ok: false, message: "Please choose a replacement file first." };
+
+                      const formData = new FormData();
+                      formData.set("id", selectedBanner.id);
+                      formData.set("title", titleDrafts[selectedBanner.id] ?? selectedBanner.title ?? "");
+                      formData.set("file", file);
+
+                      const response = await fetch("/api/admin/homepage-banners", { method: "PUT", body: formData });
+                      const payload = (await response.json()) as { success: boolean; message?: string };
+                      if (response.ok && payload.success) {
+                        setReplaceFiles((prev) => ({ ...prev, [selectedBanner.id]: null }));
+                      }
+                      return { ok: response.ok && payload.success, message: payload.message };
+                    })
                   }
-                  return { ok: response.ok && payload.success, message: payload.message };
-                })
-              }
-            />
-          ))
-        )}
-      </section>
+                  disabled={busyId === selectedBanner.id}
+                  className="mt-2 rounded-full border border-stone-900 bg-stone-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-black disabled:opacity-60"
+                >
+                  Replace Banner
+                </button>
+              </div>
+
+              <div className="grid gap-2 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    void mutateBanner(selectedBanner.id, async () => {
+                      const response = await fetch("/api/admin/homepage-banners", {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          action: "toggle-active",
+                          id: selectedBanner.id,
+                          isActive: !selectedBanner.isActive
+                        })
+                      });
+                      const payload = (await response.json()) as { success: boolean; message?: string };
+                      return { ok: response.ok && payload.success, message: payload.message };
+                    })
+                  }
+                  disabled={busyId === selectedBanner.id}
+                  className={`inline-flex items-center justify-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition disabled:opacity-60 ${
+                    selectedBanner.isActive
+                      ? "border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
+                      : "border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                  }`}
+                >
+                  {selectedBanner.isActive ? <EyeOff size={15} /> : <Eye size={15} />}
+                  {selectedBanner.isActive ? "Hide Banner" : "Show Banner"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!window.confirm("Delete this banner? This cannot be undone.")) return;
+                    void mutateBanner(selectedBanner.id, async () => {
+                      const response = await fetch(`/api/admin/homepage-banners?id=${selectedBanner.id}`, { method: "DELETE" });
+                      const payload = (await response.json()) as { success: boolean; message?: string };
+                      if (response.ok && payload.success) setSelectedBannerId(null);
+                      return { ok: response.ok && payload.success, message: payload.message };
+                    });
+                  }}
+                  disabled={busyId === selectedBanner.id}
+                  className="inline-flex items-center justify-center gap-2 rounded-full border border-rose-300 bg-rose-50 px-4 py-2 text-sm font-medium text-rose-700 transition hover:bg-rose-100 disabled:opacity-60"
+                >
+                  <Trash2 size={15} /> Delete Banner
+                </button>
+              </div>
+
+              <div className="grid gap-2 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    void mutateBanner(selectedBanner.id, async () => {
+                      const response = await fetch("/api/admin/homepage-banners", {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ action: "reorder", id: selectedBanner.id, direction: "up" })
+                      });
+                      const payload = (await response.json()) as { success: boolean; message?: string };
+                      return { ok: response.ok && payload.success, message: payload.message };
+                    })
+                  }
+                  disabled={busyId === selectedBanner.id || selectedIndex <= 0}
+                  className="inline-flex items-center justify-center gap-2 rounded-full border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-100 disabled:opacity-50"
+                >
+                  <ArrowUp size={15} /> Move Up
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    void mutateBanner(selectedBanner.id, async () => {
+                      const response = await fetch("/api/admin/homepage-banners", {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ action: "reorder", id: selectedBanner.id, direction: "down" })
+                      });
+                      const payload = (await response.json()) as { success: boolean; message?: string };
+                      return { ok: response.ok && payload.success, message: payload.message };
+                    })
+                  }
+                  disabled={busyId === selectedBanner.id || selectedIndex >= selectedGroup.length - 1}
+                  className="inline-flex items-center justify-center gap-2 rounded-full border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-100 disabled:opacity-50"
+                >
+                  <ArrowDown size={15} /> Move Down
+                </button>
+              </div>
+
+              <div className="flex justify-end pt-1">
+                <button
+                  type="button"
+                  onClick={() => setSelectedBannerId(null)}
+                  className="rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </ModalShell>
+      ) : null}
     </div>
   );
 }

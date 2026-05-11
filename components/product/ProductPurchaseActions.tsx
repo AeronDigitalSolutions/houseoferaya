@@ -10,6 +10,7 @@ type ProductPurchaseActionsProps = {
   productSlug: string;
   productName: string;
   sizeOptions: string[];
+  theme?: "default" | "signature";
 };
 
 type Notice = {
@@ -17,7 +18,12 @@ type Notice = {
   text: string;
 };
 
-export function ProductPurchaseActions({ productSlug, productName, sizeOptions }: ProductPurchaseActionsProps) {
+export function ProductPurchaseActions({
+  productSlug,
+  productName,
+  sizeOptions,
+  theme = "default"
+}: ProductPurchaseActionsProps) {
   const router = useRouter();
   const [selectedSize, setSelectedSize] = useState(sizeOptions[0] ?? "");
   const [isAddingToCart, setIsAddingToCart] = useState(false);
@@ -130,12 +136,22 @@ export function ProductPurchaseActions({ productSlug, productName, sizeOptions }
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#1c1b1b]">Select Size</p>
+        <p
+          className={`text-[11px] font-semibold uppercase tracking-[0.2em] ${
+            theme === "signature" ? "text-[#d8c39f]" : "text-[#1c1b1b]"
+          }`}
+        >
+          Select Size
+        </p>
         <CustomSelect
           value={selectedSize}
           onValueChange={setSelectedSize}
           options={sizeOptions.map((option) => ({ value: option, label: option }))}
-          buttonClassName="h-[46px] w-full rounded-none border border-stone-300/90 bg-white px-4 text-[15px] text-[#1d2026] focus:ring-1 focus:ring-[#775a19]"
+          buttonClassName={`h-[46px] w-full rounded-none border px-4 text-[15px] ${
+            theme === "signature"
+              ? "border-[#d3b37a]/55 bg-[#0d286f] text-[#f7ecd7] focus:ring-1 focus:ring-[#d3b37a]"
+              : "border-stone-300/90 bg-white text-[#1d2026] focus:ring-1 focus:ring-[#775a19]"
+          }`}
           menuClassName="w-full"
         />
       </div>
@@ -146,7 +162,11 @@ export function ProductPurchaseActions({ productSlug, productName, sizeOptions }
             type="button"
             onClick={() => void handleAddToCart("cart")}
             disabled={isAddingToCart || isBuyingNow || isWishlisting}
-            className="group relative h-[44px] flex-1 overflow-hidden bg-black px-5 text-[11px] font-semibold uppercase tracking-[0.24em] text-white transition hover:bg-[#151515] disabled:cursor-not-allowed disabled:opacity-70"
+            className={`group relative h-[44px] flex-1 overflow-hidden px-5 text-[11px] font-semibold uppercase tracking-[0.24em] transition disabled:cursor-not-allowed disabled:opacity-70 ${
+              theme === "signature"
+                ? "border border-[#d8b16b] bg-gradient-to-r from-[#0a1d5f] via-[#11358a] to-[#0a1d5f] text-[#f6d9a7] hover:brightness-110"
+                : "bg-black text-white hover:bg-[#151515]"
+            }`}
           >
             <span className="relative z-10 inline-flex items-center gap-2">
               {isAddingToCart ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
@@ -162,8 +182,12 @@ export function ProductPurchaseActions({ productSlug, productName, sizeOptions }
             aria-label={wishlisted ? "Saved to wishlist" : "Add to wishlist"}
             className={`flex h-[44px] w-[44px] items-center justify-center border transition ${
               wishlisted
-                ? "border-[#b58a54] bg-[#f4ead9] text-[#8a673d]"
-                : "border-stone-300/90 bg-white text-[#171a20] hover:border-[#b58a54] hover:text-[#8a673d]"
+                ? theme === "signature"
+                  ? "border-[#d8b16b] bg-[#1c3278] text-[#f7d79e]"
+                  : "border-[#b58a54] bg-[#f4ead9] text-[#8a673d]"
+                : theme === "signature"
+                  ? "border-[#d8b16b]/70 bg-[#0b235f] text-[#f5ddb4] hover:border-[#d8b16b] hover:text-[#ffdca8]"
+                  : "border-stone-300/90 bg-white text-[#171a20] hover:border-[#b58a54] hover:text-[#8a673d]"
             } disabled:cursor-not-allowed disabled:opacity-70`}
           >
             {isWishlisting ? (
@@ -180,7 +204,11 @@ export function ProductPurchaseActions({ productSlug, productName, sizeOptions }
           type="button"
           onClick={() => void handleAddToCart("buy-now")}
           disabled={isAddingToCart || isBuyingNow || isWishlisting}
-          className="group relative h-[44px] w-full overflow-hidden bg-[#d8bb79] px-5 text-[11px] font-semibold uppercase tracking-[0.24em] text-[#261900] transition hover:bg-[#cfb06a] disabled:cursor-not-allowed disabled:opacity-70"
+          className={`group relative h-[44px] w-full overflow-hidden px-5 text-[11px] font-semibold uppercase tracking-[0.24em] transition disabled:cursor-not-allowed disabled:opacity-70 ${
+            theme === "signature"
+              ? "border border-[#d8b16b] bg-[#f1dfbf] text-[#2a1b00] hover:bg-[#e8d4ad]"
+              : "bg-[#d8bb79] text-[#261900] hover:bg-[#cfb06a]"
+          }`}
         >
           <span className="relative z-10 inline-flex items-center gap-2">
             {isBuyingNow ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
@@ -212,4 +240,3 @@ export function ProductPurchaseActions({ productSlug, productName, sizeOptions }
     </div>
   );
 }
-

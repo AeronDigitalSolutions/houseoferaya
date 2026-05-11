@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -56,12 +56,49 @@ enum ShipmentProvider {
   MANUAL
 }
 
+enum BannerDeviceType {
+  DESKTOP
+  MOBILE
+}
+
+enum BaseMetal {
+  GOLD
+  SILVER
+}
+
+enum MetalColor {
+  YELLOW_GOLD
+  ROSE_GOLD
+  WHITE_GOLD
+  OXIDISED_SILVER
+}
+
+enum PurityType {
+  K24
+  K22
+  K18
+  K14
+  S925
+}
+
+enum MakingChargeType {
+  PER_GRAM
+  FIXED
+  PERCENTAGE
+}
+
+enum StoneCostType {
+  FIXED
+  PER_CARAT
+}
+
 model User {
   id            String      @id @default(cuid())
   name          String?
-  email         String      @unique
+  email         String?     @unique
   passwordHash  String?
   phone         String?     @unique
+  dateOfBirth   DateTime?
   role          UserRole    @default(CUSTOMER)
   isActive      Boolean     @default(true)
   emailVerified DateTime?
@@ -78,6 +115,8 @@ model User {
 model Address {
   id         String      @id @default(cuid())
   userId     String
+  nickname   String?
+  label      String?
   type       AddressType @default(HOME)
   fullName   String
   phone      String
@@ -103,6 +142,7 @@ model Category {
   name        String
   slug        String    @unique
   description String?
+  image       String?
   isActive    Boolean   @default(true)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -117,6 +157,25 @@ model Product {
   description    String          @db.Text
   price          Decimal         @db.Decimal(10, 2)
   compareAtPrice Decimal?        @db.Decimal(10, 2)
+  baseMetal      BaseMetal       @default(GOLD)
+  metalColor     MetalColor      @default(YELLOW_GOLD)
+  purity         PurityType      @default(K18)
+  purityFactor   Decimal         @default(0.75) @db.Decimal(6, 3)
+  weightGrams    Decimal         @default(1) @db.Decimal(10, 3)
+  activeGoldRate Decimal?        @db.Decimal(10, 2)
+  activeSilverRate Decimal?      @db.Decimal(10, 2)
+  useLockedRate  Boolean         @default(true)
+  useManualSellingRate Boolean   @default(false)
+  manualSellingRate Decimal?     @db.Decimal(10, 2)
+  makingChargeType MakingChargeType @default(PER_GRAM)
+  makingChargeValue Decimal      @default(0) @db.Decimal(10, 2)
+  hasStone       Boolean         @default(false)
+  stoneType      String?
+  stoneCarat     Decimal?        @db.Decimal(10, 3)
+  stoneCostType  StoneCostType   @default(FIXED)
+  stoneCostValue Decimal         @default(0) @db.Decimal(10, 2)
+  huidCharge     Decimal         @default(55) @db.Decimal(10, 2)
+  gstPercentage  Decimal         @default(3) @db.Decimal(5, 2)
   sku            String          @unique
   stock          Int             @default(0)
   metalType      String
@@ -285,6 +344,25 @@ model OrderItem {
   quantity    Int
   unitPrice   Decimal         @db.Decimal(10, 2)
   totalPrice  Decimal         @db.Decimal(10, 2)
+  baseMetalUsed BaseMetal
+  metalRateUsed Decimal       @db.Decimal(10, 2)
+  weightGramsUsed Decimal     @db.Decimal(10, 3)
+  purityUsed   PurityType
+  purityFactorUsed Decimal    @db.Decimal(6, 3)
+  metalPriceUsed Decimal      @db.Decimal(12, 2)
+  makingChargeTypeUsed MakingChargeType
+  makingChargeValueUsed Decimal @db.Decimal(10, 2)
+  makingChargeUsed Decimal    @db.Decimal(12, 2)
+  hasStoneUsed Boolean        @default(false)
+  stoneTypeUsed String?
+  stoneCostTypeUsed StoneCostType
+  stoneCaratUsed Decimal?     @db.Decimal(10, 3)
+  stoneCostValueUsed Decimal  @db.Decimal(10, 2)
+  stoneCostUsed Decimal       @db.Decimal(12, 2)
+  huidChargeUsed Decimal      @db.Decimal(10, 2)
+  subtotalBeforeGstUsed Decimal @db.Decimal(12, 2)
+  gstPercentageUsed Decimal   @db.Decimal(5, 2)
+  gstAmountUsed Decimal       @db.Decimal(12, 2)
   createdAt   DateTime        @default(now())
 
   order       Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
@@ -379,7 +457,28 @@ model AdminUser {
   email        String    @unique
   passwordHash String
   role         String    @default("SUPER_ADMIN")
+  permissions  Json?
+  mustResetPassword Boolean @default(false)
   isActive     Boolean   @default(true)
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
+}
+
+model HomepageBanner {
+  id               String           @id @default(cuid())
+  deviceType       BannerDeviceType
+  title            String?
+  fileName         String
+  publicUrl        String
+  width            Int
+  height           Int
+  sortOrder        Int              @default(0)
+  isActive         Boolean          @default(true)
+  createdByAdminId String?
+  updatedByAdminId String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  @@index([deviceType, sortOrder])
+  @@index([isActive])
 }

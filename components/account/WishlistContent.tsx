@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { FolderPlus, Heart, Trash2, X } from "lucide-react";
+import { Crown, FolderPlus, Heart, Trash2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { EmptyState } from "@/components/EmptyState";
 import { CustomSelect } from "@/components/ui/CustomSelect";
 import { formatCurrency } from "@/lib/format";
+import { isSignatureProductSlug } from "@/lib/signature-piece";
 
 type WishlistProduct = {
   id: string;
@@ -203,11 +204,27 @@ export function WishlistContent() {
       {!loading && !error && visibleProducts.length > 0 ? (
         <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
           {visibleProducts.map((product) => (
-            <article
-              key={product.itemId}
-              className="group overflow-hidden rounded-2xl border border-black/10 bg-white/85 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-            >
-              <div className="relative">
+            (() => {
+              const isSignature = isSignatureProductSlug(product.slug);
+              const productHref = isSignature ? `/signature-pieces/${product.slug}` : `/products/${product.slug}`;
+
+              return (
+                <article
+                  key={product.itemId}
+                  className={`group overflow-hidden rounded-2xl border shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${
+                    isSignature
+                      ? "border-[#1b3c95]/35 bg-gradient-to-b from-[#0a225f] via-[#10327f] to-[#0a235f] text-white"
+                      : "border-black/10 bg-white/85"
+                  }`}
+                >
+                  <div className="relative">
+                    {isSignature ? (
+                      <span className="absolute left-2 top-2 z-10 inline-flex items-center gap-1 rounded-full border border-[#d8b16b] bg-[#081c56]/85 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.15em] text-[#f4d59a]">
+                        <Crown size={10} />
+                        Signature Piece
+                      </span>
+                    ) : null}
+
                 <button
                   type="button"
                   onClick={() => void removeFromWishlist(product.itemId)}
@@ -217,43 +234,75 @@ export function WishlistContent() {
                   <Trash2 size={12} />
                 </button>
 
-                <Link href={`/products/${product.slug}`} className="block aspect-square overflow-hidden bg-stone-100">
+                    <Link href={productHref} className="block aspect-square overflow-hidden bg-stone-100">
                   <img
                     src={product.image}
                     alt={product.name}
                     className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
                   />
                 </Link>
-              </div>
+                  </div>
 
-              <div className="space-y-2.5 p-3">
-                <Link href={`/products/${product.slug}`} className="block">
-                  <h3 className="font-heading text-base leading-tight text-royal-800 sm:text-lg">{product.name}</h3>
-                  <p className="mt-1 text-[10px] uppercase tracking-[0.16em] text-royal-700/65 sm:text-xs">{product.metalType}</p>
-                </Link>
+                  <div className="space-y-2.5 p-3">
+                    <Link href={productHref} className="block">
+                      <h3
+                        className={`font-heading text-base leading-tight sm:text-lg ${
+                          isSignature ? "text-[#f6eddd]" : "text-royal-800"
+                        }`}
+                      >
+                        {product.name}
+                      </h3>
+                      <p
+                        className={`mt-1 text-[10px] uppercase tracking-[0.16em] sm:text-xs ${
+                          isSignature ? "text-[#e3d1b0]/85" : "text-royal-700/65"
+                        }`}
+                      >
+                        {product.metalType}
+                      </p>
+                    </Link>
 
-                <div className="flex items-center gap-2">
-                  <p className="text-lg font-semibold text-royal-800 sm:text-xl">{formatCurrency(product.price)}</p>
-                  {product.compareAtPrice ? (
-                    <p className="text-xs text-royal-700/45 line-through">{formatCurrency(product.compareAtPrice)}</p>
-                  ) : null}
-                </div>
+                    <div className="flex items-center gap-2">
+                      <p className={`text-lg font-semibold sm:text-xl ${isSignature ? "text-[#f7e6c7]" : "text-royal-800"}`}>
+                        {formatCurrency(product.price)}
+                      </p>
+                      {product.compareAtPrice ? (
+                        <p className={`text-xs line-through ${isSignature ? "text-[#dac6a3]/65" : "text-royal-700/45"}`}>
+                          {formatCurrency(product.compareAtPrice)}
+                        </p>
+                      ) : null}
+                    </div>
 
-                <div className="rounded-xl border border-black/10 bg-[#fbf7f1] p-2">
-                  <label className="mb-1 block text-[10px] uppercase tracking-[0.16em] text-royal-700/60">Group</label>
-                  <CustomSelect
-                    value={getAssignedGroupId(product.id)}
-                    onValueChange={(value) => moveToGroup(product.id, value)}
-                    options={[
-                      { value: "ungrouped", label: "Ungrouped" },
-                      ...groups.map((group) => ({ value: group.id, label: group.name }))
-                    ]}
-                    buttonClassName="w-full rounded-lg border border-black/12 bg-white px-2.5 py-1.5 text-xs text-royal-700 outline-none"
-                    menuClassName="w-full"
-                  />
-                </div>
-              </div>
-            </article>
+                    <div
+                      className={`rounded-xl border p-2 ${
+                        isSignature ? "border-[#d5b57b]/35 bg-[#0a1e58]/65" : "border-black/10 bg-[#fbf7f1]"
+                      }`}
+                    >
+                      <label
+                        className={`mb-1 block text-[10px] uppercase tracking-[0.16em] ${
+                          isSignature ? "text-[#e6d5b7]/80" : "text-royal-700/60"
+                        }`}
+                      >
+                        Group
+                      </label>
+                      <CustomSelect
+                        value={getAssignedGroupId(product.id)}
+                        onValueChange={(value) => moveToGroup(product.id, value)}
+                        options={[
+                          { value: "ungrouped", label: "Ungrouped" },
+                          ...groups.map((group) => ({ value: group.id, label: group.name }))
+                        ]}
+                        buttonClassName={`w-full rounded-lg border px-2.5 py-1.5 text-xs outline-none ${
+                          isSignature
+                            ? "border-[#d6b884]/45 bg-[#112d77] text-[#f5deba]"
+                            : "border-black/12 bg-white text-royal-700"
+                        }`}
+                        menuClassName="w-full"
+                      />
+                    </div>
+                  </div>
+                </article>
+              );
+            })()
           ))}
         </section>
       ) : null}

@@ -4,8 +4,9 @@ Production-friendly architecture scaffold for a jewelry ecommerce platform using
 - Next.js 15 App Router
 - TypeScript
 - Tailwind CSS
-- Prisma ORM + MySQL
+- Prisma ORM + PostgreSQL
 - API route placeholders for cart, checkout, payment, shipping, product, and order flows
+- JWT auth + OTP (demo) flow for customer dashboard
 
 All content is placeholder-only and ready to replace.
 
@@ -58,6 +59,9 @@ app/
   api/                    # API route handlers
 components/               # Reusable UI building blocks
 lib/                      # Shared types, mock data, helpers, prisma client
+public/
+  uploads/
+    products/             # Admin-uploaded product images
 prisma/
   schema.prisma
   seed.ts
@@ -67,10 +71,32 @@ prisma/
 
 Required keys:
 - `DATABASE_URL`
+- `BACKEND_API_ORIGIN` (optional, used when frontend is deployed separately and should proxy `/api/*` to remote backend)
 - `RAZORPAY_KEY_ID`
 - `RAZORPAY_KEY_SECRET`
 - `SHIPPING_API_KEY`
 - `SHIPPING_API_SECRET`
+- `JWT_SECRET`
+- `DUMMY_OTP`
+
+## Vercel Frontend + Hostinger Backend Setup
+
+If frontend is on Vercel and backend is on Hostinger, configure this in Vercel:
+
+1. Set environment variable:
+   - `BACKEND_API_ORIGIN=https://api.yourdomain.com`
+2. Redeploy frontend on Vercel.
+
+What happens:
+- Frontend keeps calling relative paths like `/api/...`.
+- Next.js rewrite in `next.config.js` proxies those calls to:
+  - `https://api.yourdomain.com/api/...`
+- No frontend code changes needed for API URLs.
+
+Notes:
+- Leave `BACKEND_API_ORIGIN` empty for local monorepo mode.
+- Keep HTTPS enabled on Hostinger backend domain.
+- If backend sets auth cookies, use secure cookie settings compatible with production HTTPS.
 
 ## Routes Implemented
 
@@ -122,6 +148,28 @@ Admin area:
 - `GET /api/products/[slug]`
 - `GET /api/orders`
 - `GET /api/orders/[orderId]`
+- `GET /api/admin/product-images?productSlug=<slug>`
+- `POST /api/admin/product-images` (form-data: `productSlug`, `file`, optional `fileName`)
+- `DELETE /api/admin/product-images?productSlug=<slug>&fileName=<name>`
+
+Auth and account endpoints:
+- `POST /api/auth/register/initiate`
+- `POST /api/auth/register/verify`
+- `POST /api/auth/login/initiate`
+- `POST /api/auth/login/verify`
+- `GET /api/auth/me`
+- `POST /api/auth/logout`
+- `GET /api/account/profile`
+- `PUT /api/account/profile`
+- `GET /api/account/addresses`
+- `POST /api/account/addresses`
+- `PUT /api/account/addresses/[addressId]`
+- `DELETE /api/account/addresses/[addressId]`
+- `GET /api/account/orders`
+- `GET /api/account/orders/[orderId]`
+- `GET /api/account/wishlist`
+- `POST /api/account/wishlist/items`
+- `DELETE /api/account/wishlist/items/[itemId]`
 
 ## Reusable Components
 

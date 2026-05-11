@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { Crown } from "lucide-react";
 import { formatCurrency } from "@/lib/format";
 import type { CartLine } from "@/lib/types";
+import { isSignatureProductSlug } from "@/lib/signature-piece";
 
 type CartItemProps = {
   item: CartLine;
@@ -15,11 +17,19 @@ type CartItemProps = {
 
 export function CartItem({ item, onIncrease, onDecrease, onRemove, onMoveToWishlist, isBusy = false }: CartItemProps) {
   const lineTotal = item.product.price * item.quantity;
+  const isSignature = Boolean(item.product.isSignature || isSignatureProductSlug(item.product.slug));
+  const productHref = isSignature ? `/signature-pieces/${item.product.slug}` : `/products/${item.product.slug}`;
 
   return (
-    <article className="overflow-hidden rounded-3xl border border-black/10 bg-white/90 p-4 shadow-sm">
+    <article
+      className={`overflow-hidden rounded-3xl border p-4 shadow-sm ${
+        isSignature
+          ? "border-[#1a3888]/25 bg-gradient-to-r from-[#0b2368] via-[#123683] to-[#0d255f] text-white"
+          : "border-black/10 bg-white/90"
+      }`}
+    >
       <div className="grid gap-4 sm:grid-cols-[118px_1fr]">
-        <Link href={`/products/${item.product.slug}`} className="block overflow-hidden rounded-2xl bg-stone-100">
+        <Link href={productHref} className="block overflow-hidden rounded-2xl bg-stone-100">
           <img
             src={item.product.image}
             alt={item.product.name}
@@ -30,19 +40,66 @@ export function CartItem({ item, onIncrease, onDecrease, onRemove, onMoveToWishl
         <div className="space-y-3">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <Link href={`/products/${item.product.slug}`} className="font-heading text-xl leading-tight text-royal-800 hover:underline">
+              {isSignature ? (
+                <span className="mb-1 inline-flex items-center gap-1 rounded-full border border-[#d8b16b] bg-[#0b1f5b]/70 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-[#f3d28f]">
+                  <Crown size={10} />
+                  Signature Piece
+                </span>
+              ) : null}
+              <Link
+                href={productHref}
+                className={`font-heading text-xl leading-tight hover:underline ${
+                  isSignature ? "text-[#f4ebde]" : "text-royal-800"
+                }`}
+              >
                 {item.product.name}
               </Link>
-              <p className="mt-1 text-xs uppercase tracking-[0.16em] text-royal-700/65">{item.product.metalType}</p>
+              <p
+                className={`mt-1 text-xs uppercase tracking-[0.16em] ${
+                  isSignature ? "text-[#dfcaac]/85" : "text-royal-700/65"
+                }`}
+              >
+                {item.product.metalType}
+              </p>
             </div>
-            <p className="text-base font-semibold text-royal-800">{formatCurrency(lineTotal)}</p>
+            <p className={`text-base font-semibold ${isSignature ? "text-[#f8ebd5]" : "text-royal-800"}`}>
+              {formatCurrency(lineTotal)}
+            </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 text-xs text-royal-700/75 sm:grid-cols-4">
-            <div className="rounded-lg border border-black/10 bg-[#fbf7f1] px-2 py-1.5">SKU: {item.product.sku}</div>
-            <div className="rounded-lg border border-black/10 bg-[#fbf7f1] px-2 py-1.5">Weight: {item.product.weight}</div>
-            <div className="rounded-lg border border-black/10 bg-[#fbf7f1] px-2 py-1.5">Stone: {item.product.gemstone}</div>
-            <div className="rounded-lg border border-black/10 bg-[#fbf7f1] px-2 py-1.5">Cert: {item.product.certification}</div>
+          <div
+            className={`grid grid-cols-2 gap-2 text-xs sm:grid-cols-4 ${
+              isSignature ? "text-[#d7c8af]/95" : "text-royal-700/75"
+            }`}
+          >
+            <div
+              className={`rounded-lg px-2 py-1.5 ${
+                isSignature ? "border border-[#d5b77f]/35 bg-[#0b1e56]/65" : "border border-black/10 bg-[#fbf7f1]"
+              }`}
+            >
+              SKU: {item.product.sku}
+            </div>
+            <div
+              className={`rounded-lg px-2 py-1.5 ${
+                isSignature ? "border border-[#d5b77f]/35 bg-[#0b1e56]/65" : "border border-black/10 bg-[#fbf7f1]"
+              }`}
+            >
+              Weight: {item.product.weight}
+            </div>
+            <div
+              className={`rounded-lg px-2 py-1.5 ${
+                isSignature ? "border border-[#d5b77f]/35 bg-[#0b1e56]/65" : "border border-black/10 bg-[#fbf7f1]"
+              }`}
+            >
+              Stone: {item.product.gemstone}
+            </div>
+            <div
+              className={`rounded-lg px-2 py-1.5 ${
+                isSignature ? "border border-[#d5b77f]/35 bg-[#0b1e56]/65" : "border border-black/10 bg-[#fbf7f1]"
+              }`}
+            >
+              Cert: {item.product.certification}
+            </div>
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -73,7 +130,11 @@ export function CartItem({ item, onIncrease, onDecrease, onRemove, onMoveToWishl
                 type="button"
                 onClick={onMoveToWishlist}
                 disabled={isBusy}
-                className="rounded-full border border-black/12 bg-white px-3 py-1.5 text-xs text-royal-700 transition hover:border-royal-700 disabled:opacity-60"
+                className={`rounded-full border px-3 py-1.5 text-xs transition disabled:opacity-60 ${
+                  isSignature
+                    ? "border-[#d8b16b]/45 bg-[#0b1f58] text-[#f1d7aa] hover:border-[#d8b16b]"
+                    : "border-black/12 bg-white text-royal-700 hover:border-royal-700"
+                }`}
               >
                 Move to Wishlist
               </button>

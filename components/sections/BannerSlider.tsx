@@ -105,6 +105,7 @@ export function BannerSlider({ immersive = false }: BannerSliderProps) {
                     src={desktopBanner.publicUrl}
                     alt={desktopBanner.title || `House of Eraya banner ${index + 1}`}
                     fill
+                    unoptimized
                     priority={index === 0}
                     className="object-cover"
                     sizes="(min-width: 1024px) 88vw, 96vw"
@@ -146,6 +147,7 @@ export function BannerSlider({ immersive = false }: BannerSliderProps) {
                     src={mobileBanner.publicUrl}
                     alt={mobileBanner.title || `House of Eraya mobile banner ${index + 1}`}
                     fill
+                    unoptimized
                     priority={index === 0}
                     className="object-cover"
                     sizes="94vw"
@@ -191,6 +193,7 @@ export function BannerSlider({ immersive = false }: BannerSliderProps) {
                 src={desktopBanner.publicUrl}
                 alt={desktopBanner.title || `House of Eraya banner ${index + 1}`}
                 fill
+                unoptimized
                 priority={index === 0}
                 className="object-cover"
                 sizes="100vw"
@@ -213,6 +216,7 @@ export function BannerSlider({ immersive = false }: BannerSliderProps) {
                 src={mobileBanner.publicUrl}
                 alt={mobileBanner.title || `House of Eraya mobile banner ${index + 1}`}
                 fill
+                unoptimized
                 priority={index === 0}
                 className="object-cover"
                 sizes="100vw"

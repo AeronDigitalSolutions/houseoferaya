@@ -16,7 +16,9 @@ const mainLinks = [
 const quickLinks = [
   { href: "/", label: "Home" },
   { href: "/collections", label: "Collections" },
+  { href: "/signature-pieces", label: "Signature Pieces" },
   { href: "/collections/rings", label: "Collection Detail (Example)" },
+  { href: "/signature-pieces/celeste-diamond-ring", label: "Signature Product (Example)" },
   { href: "/products/celeste-diamond-ring", label: "Product Detail (Example)" },
   { href: "/cart", label: "Cart" },
   { href: "/checkout", label: "Checkout" },

@@ -6,9 +6,17 @@ type ProductGridProps = {
   products: Product[];
   fullCardClickable?: boolean;
   hideViewButton?: boolean;
+  emphasizeSignature?: boolean;
+  linkPrefix?: string;
 };
 
-export function ProductGrid({ products, fullCardClickable = false, hideViewButton = false }: ProductGridProps) {
+export function ProductGrid({
+  products,
+  fullCardClickable = false,
+  hideViewButton = false,
+  emphasizeSignature = false,
+  linkPrefix = "/products"
+}: ProductGridProps) {
   if (!products.length) {
     return (
       <EmptyState
@@ -26,6 +34,8 @@ export function ProductGrid({ products, fullCardClickable = false, hideViewButto
           product={product}
           fullCardClickable={fullCardClickable}
           hideViewButton={hideViewButton}
+          emphasizeSignature={emphasizeSignature}
+          linkPrefix={linkPrefix}
         />
       ))}
     </div>

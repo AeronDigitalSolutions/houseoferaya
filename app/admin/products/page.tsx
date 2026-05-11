@@ -2,6 +2,7 @@ import { requireAdminPermission } from "@/lib/auth/admin-guard";
 import { prisma } from "@/lib/prisma";
 import { buildProductPricing, productPricingSelect } from "@/lib/product-pricing";
 import { AdminProductsManager } from "@/components/admin/products/AdminProductsManager";
+import { isSignatureProductSlug } from "@/lib/signature-piece";
 
 export default async function AdminProductsPage() {
   const admin = await requireAdminPermission("canViewProducts");
@@ -30,7 +31,8 @@ export default async function AdminProductsPage() {
       purity: product.purity,
       weightGrams: Number(product.weightGrams),
       finalPrice: pricing.finalPrice,
-      isActive: product.isActive
+      isActive: product.isActive,
+      isSignature: isSignatureProductSlug(product.slug)
     };
   });
 

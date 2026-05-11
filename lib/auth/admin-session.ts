@@ -21,10 +21,31 @@ export type AdminSessionUser = {
   permissions: AdminPermissionSet;
 };
 
-function buildCookieOptions() {
+function shouldUseSecureCookies(request?: Request) {
+  if (process.env.NODE_ENV !== "production") {
+    return false;
+  }
+
+  if (!request) {
+    return true;
+  }
+
+  const forwardedProto = request.headers.get("x-forwarded-proto");
+  if (forwardedProto) {
+    return forwardedProto.split(",")[0].trim() === "https";
+  }
+
+  try {
+    return new URL(request.url).protocol === "https:";
+  } catch {
+    return true;
+  }
+}
+
+function buildCookieOptions(request?: Request) {
   return {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: shouldUseSecureCookies(request),
     sameSite: "lax" as const,
     path: "/",
     maxAge: ADMIN_AUTH_TOKEN_EXPIRY_SECONDS
@@ -95,6 +116,7 @@ export async function ensureDefaultSuperAdmin() {
 
 export function attachAdminSessionCookie(
   response: NextResponse,
+  request: Request,
   payload: {
     id: string;
     role: AdminRole;
@@ -105,12 +127,12 @@ export function attachAdminSessionCookie(
     role: payload.role
   });
 
-  response.cookies.set(ADMIN_AUTH_COOKIE_NAME, token, buildCookieOptions());
+  response.cookies.set(ADMIN_AUTH_COOKIE_NAME, token, buildCookieOptions(request));
 }
 
-export function clearAdminSessionCookie(response: NextResponse) {
+export function clearAdminSessionCookie(response: NextResponse, request?: Request) {
   response.cookies.set(ADMIN_AUTH_COOKIE_NAME, "", {
-    ...buildCookieOptions(),
+    ...buildCookieOptions(request),
     maxAge: 0
   });
 }
