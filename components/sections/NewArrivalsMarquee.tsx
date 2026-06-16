@@ -1,11 +1,17 @@
 import Link from "next/link";
 import { products } from "@/lib/mock-data";
+import { SafeImage } from "@/components/ui/SafeImage";
 import { formatCurrency } from "@/lib/format";
+import type { Product } from "@/lib/types";
+import { isSignatureProductSlug } from "@/lib/signature-piece";
 
-const newArrivals = products.slice(0, 6);
-const marqueeItems = [...newArrivals, ...newArrivals];
+type NewArrivalsMarqueeProps = {
+  products?: Product[];
+};
 
-export function NewArrivalsMarquee() {
+export function NewArrivalsMarquee({ products: arrivalProducts }: NewArrivalsMarqueeProps) {
+  const newArrivals = (arrivalProducts && arrivalProducts.length > 0 ? arrivalProducts : products.slice(0, 6)).slice(0, 12);
+  const marqueeItems = [...newArrivals, ...newArrivals];
   return (
     <section className="overflow-hidden border-y border-black/10 bg-[#f9f6f1] py-7 sm:py-8">
       <div className="mx-auto w-full max-w-7xl px-5 sm:px-8 lg:px-12">
@@ -22,12 +28,14 @@ export function NewArrivalsMarquee() {
           {marqueeItems.map((product, idx) => (
             <Link
               key={`${product.id}-${idx}`}
-              href={`/products/${product.slug}`}
+              href={isSignatureProductSlug(product.slug) ? `/signature-pieces/${product.slug}` : `/products/${product.slug}`}
               className="group w-[220px] shrink-0 rounded-2xl border border-black/10 bg-white/70 p-3 shadow-[0_8px_20px_rgba(33,29,24,0.06)] transition hover:-translate-y-0.5"
             >
               <div className="aspect-square overflow-hidden rounded-xl bg-stone-100">
-                <img
+                <SafeImage
                   src={product.image}
+                  fallbackSrc={null}
+                  showMissingPlaceholder
                   alt={product.name}
                   className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
                 />
@@ -41,4 +49,3 @@ export function NewArrivalsMarquee() {
     </section>
   );
 }
-

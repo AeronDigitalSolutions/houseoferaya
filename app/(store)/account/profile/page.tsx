@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { CalendarDays, Mail, Phone, UserRound, LogOut } from "lucide-react";
+import { CalendarDays, Mail, Phone, UserRound, LogOut, ShieldCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 type ProfileData = {
@@ -18,6 +18,36 @@ const emptyProfile: ProfileData = {
   dateOfBirth: ""
 };
 
+type ContactField = "email" | "phone";
+
+type PendingVerificationState = Partial<
+  Record<
+    ContactField,
+    {
+      value: string;
+      challengeToken: string;
+    }
+  >
+>;
+
+type VerifiedContactState = Partial<
+  Record<
+    ContactField,
+    {
+      value: string;
+      verifiedToken: string;
+    }
+  >
+>;
+
+function normalizeEmailValue(value: string) {
+  return value.trim().toLowerCase();
+}
+
+function normalizePhoneValue(value: string) {
+  return value.replace(/\s+/g, "").trim();
+}
+
 export default function ProfilePage() {
   const router = useRouter();
   const [form, setForm] = useState<ProfileData>(emptyProfile);
@@ -29,6 +59,11 @@ export default function ProfilePage() {
   const [statusMessage, setStatusMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [focusField, setFocusField] = useState<keyof ProfileData | null>(null);
+  const [pendingVerification, setPendingVerification] = useState<PendingVerificationState>({});
+  const [verifiedContacts, setVerifiedContacts] = useState<VerifiedContactState>({});
+  const [otpValues, setOtpValues] = useState<Partial<Record<ContactField, string>>>({});
+  const [verifying, setVerifying] = useState(false);
+  const [verificationModalOpen, setVerificationModalOpen] = useState(false);
   const nameInputRef = useRef<HTMLInputElement>(null);
   const emailInputRef = useRef<HTMLInputElement>(null);
   const phoneInputRef = useRef<HTMLInputElement>(null);
@@ -52,6 +87,10 @@ export default function ProfilePage() {
       };
       setForm(nextForm);
       setSavedProfile(nextForm);
+      setPendingVerification({});
+      setVerifiedContacts({});
+      setOtpValues({});
+      setVerificationModalOpen(false);
       setSavedAt(data.user?.updatedAt || null);
       setIsEditing(!(data.user?.name && (data.user?.email || data.user?.phone)));
     } catch {
@@ -108,6 +147,20 @@ export default function ProfilePage() {
 
   const onChangeField = (field: keyof ProfileData, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
+
+    if (field === "email" || field === "phone") {
+      setPendingVerification((prev) => {
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+      setVerifiedContacts((prev) => {
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+      setOtpValues((prev) => ({ ...prev, [field]: "" }));
+    }
   };
 
   const openEditorForField = (field: keyof ProfileData) => {
@@ -117,37 +170,181 @@ export default function ProfilePage() {
     setFocusField(field);
   };
 
+  const normalizedContactValue = (field: ContactField, source: ProfileData | null) => {
+    const raw = source?.[field] || "";
+    return field === "email" ? normalizeEmailValue(raw) : normalizePhoneValue(raw);
+  };
+
+  const changedContacts = useMemo(() => {
+    const changed: ContactField[] = [];
+    if (normalizedContactValue("email", form) !== normalizedContactValue("email", savedProfile)) {
+      changed.push("email");
+    }
+    if (normalizedContactValue("phone", form) !== normalizedContactValue("phone", savedProfile)) {
+      changed.push("phone");
+    }
+    return changed;
+  }, [form, savedProfile]);
+
+  const hasValidVerifiedTokenFor = (field: ContactField) =>
+    verifiedContacts[field]?.value === normalizedContactValue(field, form) && Boolean(verifiedContacts[field]?.verifiedToken);
+
+  const hasPendingVerificationFor = (field: ContactField) =>
+    pendingVerification[field]?.value === normalizedContactValue(field, form) && Boolean(pendingVerification[field]?.challengeToken);
+
+  const submitProfileUpdate = async (verifiedOverride?: VerifiedContactState) => {
+    const verifiedState = verifiedOverride ?? verifiedContacts;
+    const res = await fetch("/api/account/profile", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...form,
+        emailVerificationToken:
+          verifiedState.email?.value === normalizedContactValue("email", form) ? verifiedState.email.verifiedToken : undefined,
+        phoneVerificationToken:
+          verifiedState.phone?.value === normalizedContactValue("phone", form) ? verifiedState.phone.verifiedToken : undefined
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data?.message || "Unable to update profile.");
+    }
+
+    const next = {
+      name: data.user?.name || "",
+      email: data.user?.email || "",
+      phone: data.user?.phone || "",
+      dateOfBirth: data.user?.dateOfBirth ? String(data.user.dateOfBirth).slice(0, 10) : ""
+    };
+
+    setForm(next);
+    setSavedProfile(next);
+    setSavedAt(data.user?.updatedAt || new Date().toISOString());
+    setPendingVerification({});
+    setVerifiedContacts({});
+    setOtpValues({});
+    setVerificationModalOpen(false);
+    setIsEditing(false);
+    setStatusMessage("Profile saved successfully.");
+  };
+
+  const initiateContactVerification = async (fields: ContactField[]) => {
+    const nextPending: PendingVerificationState = {};
+
+    for (const field of fields) {
+      const value = normalizedContactValue(field, form);
+      if (!value) continue;
+
+      const res = await fetch("/api/account/profile/contact/initiate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: field, value })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.message || `Unable to send ${field} verification OTP.`);
+      }
+
+      nextPending[field] = {
+        value,
+        challengeToken: String(data.challengeToken || "")
+      };
+    }
+
+    setPendingVerification((prev) => ({ ...prev, ...nextPending }));
+    setVerificationModalOpen(true);
+    setStatusMessage(
+      fields.length > 1
+        ? "OTPs sent to your updated contacts. Verify them to finish saving."
+        : `OTP sent to verify your new ${fields[0]}.`
+    );
+  };
+
+  const verifyContactsAndSave = async () => {
+    const fieldsToVerify = changedContacts.filter((field) => hasPendingVerificationFor(field) && !hasValidVerifiedTokenFor(field));
+
+    if (!fieldsToVerify.length) {
+      return;
+    }
+
+    setVerifying(true);
+    setStatusMessage("");
+    setErrorMessage("");
+
+    try {
+      const nextVerified: VerifiedContactState = { ...verifiedContacts };
+
+      for (const field of fieldsToVerify) {
+        const pending = pendingVerification[field];
+        const otp = String(otpValues[field] || "").trim();
+
+        if (!pending || !otp) {
+          throw new Error(`Enter the OTP sent to your new ${field}.`);
+        }
+
+        const res = await fetch("/api/account/profile/contact/verify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type: field,
+            value: pending.value,
+            otp,
+            challengeToken: pending.challengeToken
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data?.message || `Unable to verify ${field}.`);
+        }
+
+        nextVerified[field] = {
+          value: pending.value,
+          verifiedToken: String(data.verifiedToken || "")
+        };
+      }
+
+      setVerifiedContacts(nextVerified);
+      await submitProfileUpdate(nextVerified);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Unable to verify OTP.");
+    } finally {
+      setVerifying(false);
+    }
+  };
+
   const saveProfile = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setSaving(true);
     setStatusMessage("");
     setErrorMessage("");
     try {
-      const res = await fetch("/api/account/profile", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form)
+      const fieldsNeedingVerification = changedContacts.filter((field) => {
+        const nextValue = normalizedContactValue(field, form);
+        if (!nextValue) {
+          return false;
+        }
+        return !hasValidVerifiedTokenFor(field);
       });
-      const data = await res.json();
-      if (!res.ok) {
-        setErrorMessage(data?.message || "Unable to update profile.");
+
+      if (fieldsNeedingVerification.length) {
+        const fieldsToInitiate = fieldsNeedingVerification.filter((field) => !hasPendingVerificationFor(field));
+
+        if (fieldsToInitiate.length) {
+          await initiateContactVerification(fieldsToInitiate);
+        } else {
+          setVerificationModalOpen(true);
+          setStatusMessage("Enter the OTP sent to your updated contact and then verify to finish saving.");
+        }
         return;
       }
 
-      const next = {
-        name: data.user?.name || "",
-        email: data.user?.email || "",
-        phone: data.user?.phone || "",
-        dateOfBirth: data.user?.dateOfBirth ? String(data.user.dateOfBirth).slice(0, 10) : ""
-      };
-
-      setForm(next);
-      setSavedProfile(next);
-      setSavedAt(data.user?.updatedAt || new Date().toISOString());
-      setIsEditing(false);
-      setStatusMessage("Profile saved successfully.");
-    } catch {
-      setErrorMessage("Unable to update profile.");
+      await submitProfileUpdate();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to update profile.";
+      if (message.toLowerCase().includes("verify your new")) {
+        setVerificationModalOpen(true);
+      }
+      setErrorMessage(message);
     } finally {
       setSaving(false);
     }
@@ -180,6 +377,10 @@ export default function ProfilePage() {
                 setIsEditing(true);
                 setStatusMessage("");
                 setErrorMessage("");
+                setPendingVerification({});
+                setVerifiedContacts({});
+                setOtpValues({});
+                setVerificationModalOpen(false);
               }}
               className="rounded-full border border-black/12 bg-white px-4 py-2 text-xs uppercase tracking-[0.14em] text-royal-700 transition hover:border-royal-700"
             >
@@ -330,7 +531,7 @@ export default function ProfilePage() {
                 disabled={saving}
                 className="rounded-full bg-royal-800 px-5 py-2.5 text-sm font-medium tracking-[0.12em] text-white disabled:opacity-60"
               >
-                {saving ? "Saving..." : "Save Profile"}
+                {saving ? "Saving..." : changedContacts.length ? "Save & Continue Verification" : "Save Profile"}
               </button>
 
               {savedProfile ? (
@@ -341,6 +542,10 @@ export default function ProfilePage() {
                     setIsEditing(false);
                     setStatusMessage("");
                     setErrorMessage("");
+                    setPendingVerification({});
+                    setVerifiedContacts({});
+                    setOtpValues({});
+                    setVerificationModalOpen(false);
                   }}
                   className="rounded-full border border-black/12 bg-white px-5 py-2.5 text-sm text-royal-700 transition hover:border-royal-700"
                 >
@@ -351,6 +556,109 @@ export default function ProfilePage() {
           </form>
         </section>
       )}
+
+      {verificationModalOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#1b1611]/45 px-4 py-6 backdrop-blur-sm">
+          <div className="w-full max-w-2xl rounded-[2rem] border border-[#dcc6a5] bg-[linear-gradient(180deg,#fffdfa_0%,#f8f1e6_100%)] p-6 shadow-[0_24px_60px_rgba(48,33,17,0.22)]">
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-2">
+                <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-[#8a6538] shadow-sm">
+                  <ShieldCheck size={18} />
+                </span>
+                <div>
+                  <p className="text-xs uppercase tracking-[0.22em] text-[#8a6538]">Verify Contact Update</p>
+                  <h3 className="mt-2 font-heading text-2xl text-royal-800">OTP verification required</h3>
+                  <p className="mt-2 text-sm leading-6 text-royal-700/75">
+                    Verify your updated contact details before we save them to your profile.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setVerificationModalOpen(false)}
+                className="rounded-full border border-black/10 bg-white px-4 py-2 text-xs uppercase tracking-[0.14em] text-royal-700"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+              {changedContacts.includes("email") ? (
+                <div className="rounded-2xl border border-black/8 bg-white/85 p-4">
+                  <p className="text-xs uppercase tracking-[0.16em] text-royal-700/60">Email verification</p>
+                  <p className="mt-1 text-sm font-medium text-royal-800">{form.email || "No email entered"}</p>
+                  {hasValidVerifiedTokenFor("email") ? (
+                    <p className="mt-3 text-xs font-medium text-emerald-700">Verified and ready to save.</p>
+                  ) : pendingVerification.email ? (
+                    <>
+                      <input
+                        value={otpValues.email || ""}
+                        onChange={(event) => setOtpValues((prev) => ({ ...prev, email: event.target.value }))}
+                        placeholder="Enter email OTP"
+                        className="mt-3 w-full rounded-xl border border-black/12 bg-white px-3 py-2.5 text-sm text-royal-800 outline-none placeholder:text-royal-700/35 focus:border-[#9c7346]/55"
+                      />
+                      <p className="mt-2 text-xs text-royal-700/65">
+                        {"OTP sent to your updated email."}
+                      </p>
+                    </>
+                  ) : (
+                    <p className="mt-3 text-xs text-royal-700/65">Save once to send OTP for this email.</p>
+                  )}
+                </div>
+              ) : null}
+
+              {changedContacts.includes("phone") ? (
+                <div className="rounded-2xl border border-black/8 bg-white/85 p-4">
+                  <p className="text-xs uppercase tracking-[0.16em] text-royal-700/60">Phone verification</p>
+                  <p className="mt-1 text-sm font-medium text-royal-800">{form.phone || "No phone entered"}</p>
+                  {hasValidVerifiedTokenFor("phone") ? (
+                    <p className="mt-3 text-xs font-medium text-emerald-700">Verified and ready to save.</p>
+                  ) : pendingVerification.phone ? (
+                    <>
+                      <input
+                        value={otpValues.phone || ""}
+                        onChange={(event) => setOtpValues((prev) => ({ ...prev, phone: event.target.value }))}
+                        placeholder="Enter SMS OTP"
+                        className="mt-3 w-full rounded-xl border border-black/12 bg-white px-3 py-2.5 text-sm text-royal-800 outline-none placeholder:text-royal-700/35 focus:border-[#9c7346]/55"
+                      />
+                      <p className="mt-2 text-xs text-royal-700/65">OTP sent to your updated phone number.</p>
+                    </>
+                  ) : (
+                    <p className="mt-3 text-xs text-royal-700/65">Save once to send OTP for this phone number.</p>
+                  )}
+                </div>
+              ) : null}
+            </div>
+
+            <div className="mt-5 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  void verifyContactsAndSave();
+                }}
+                disabled={verifying}
+                className="rounded-full bg-royal-800 px-5 py-2.5 text-sm font-medium tracking-[0.12em] text-white disabled:opacity-60"
+              >
+                {verifying ? "Verifying..." : "Verify OTP & Save"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  void initiateContactVerification(
+                    changedContacts.filter((field) => {
+                      const nextValue = normalizedContactValue(field, form);
+                      return Boolean(nextValue) && !hasValidVerifiedTokenFor(field);
+                    })
+                  );
+                }}
+                className="rounded-full border border-black/12 bg-white px-5 py-2.5 text-sm text-royal-700 transition hover:border-royal-700"
+              >
+                Resend OTP
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {statusMessage ? <p className="text-sm text-emerald-700">{statusMessage}</p> : null}
       {errorMessage ? <p className="text-sm text-rose-700">{errorMessage}</p> : null}

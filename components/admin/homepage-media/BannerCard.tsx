@@ -70,7 +70,6 @@ export function BannerCard({
               src={banner.publicUrl}
               alt={banner.title || banner.fileName}
               fill
-              unoptimized
               className="object-cover"
               sizes="(max-width: 1024px) 100vw, 320px"
             />

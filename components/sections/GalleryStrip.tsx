@@ -25,6 +25,7 @@ export function GalleryStrip() {
                 width={600}
                 height={600}
                 className="aspect-square w-full object-cover"
+                quality={70}
               />
             </motion.div>
           ))}

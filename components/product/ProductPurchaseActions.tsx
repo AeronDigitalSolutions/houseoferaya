@@ -10,6 +10,7 @@ type ProductPurchaseActionsProps = {
   productSlug: string;
   productName: string;
   sizeOptions: string[];
+  showSizeSelector?: boolean;
   theme?: "default" | "signature";
 };
 
@@ -22,6 +23,7 @@ export function ProductPurchaseActions({
   productSlug,
   productName,
   sizeOptions,
+  showSizeSelector = false,
   theme = "default"
 }: ProductPurchaseActionsProps) {
   const router = useRouter();
@@ -51,7 +53,7 @@ export function ProductPurchaseActions({
         body: JSON.stringify({
           productSlug,
           quantity: 1,
-          size: selectedSize
+          size: showSizeSelector ? selectedSize : undefined
         })
       });
 
@@ -135,26 +137,28 @@ export function ProductPurchaseActions({
 
   return (
     <div className="space-y-4">
-      <div className="space-y-2">
-        <p
-          className={`text-[11px] font-semibold uppercase tracking-[0.2em] ${
-            theme === "signature" ? "text-[#d8c39f]" : "text-[#1c1b1b]"
-          }`}
-        >
-          Select Size
-        </p>
-        <CustomSelect
-          value={selectedSize}
-          onValueChange={setSelectedSize}
-          options={sizeOptions.map((option) => ({ value: option, label: option }))}
-          buttonClassName={`h-[46px] w-full rounded-none border px-4 text-[15px] ${
-            theme === "signature"
-              ? "border-[#d3b37a]/55 bg-[#0d286f] text-[#f7ecd7] focus:ring-1 focus:ring-[#d3b37a]"
-              : "border-stone-300/90 bg-white text-[#1d2026] focus:ring-1 focus:ring-[#775a19]"
-          }`}
-          menuClassName="w-full"
-        />
-      </div>
+      {showSizeSelector ? (
+        <div className="space-y-2">
+          <p
+            className={`text-[11px] font-semibold uppercase tracking-[0.2em] ${
+              theme === "signature" ? "text-[#d8c39f]" : "text-[#1c1b1b]"
+            }`}
+          >
+            Select Size
+          </p>
+          <CustomSelect
+            value={selectedSize}
+            onValueChange={setSelectedSize}
+            options={sizeOptions.map((option) => ({ value: option, label: option }))}
+            buttonClassName={`h-[46px] w-full rounded-none border px-4 text-[15px] ${
+              theme === "signature"
+                ? "border-[#d3b37a]/55 bg-[#0d286f] text-[#f7ecd7] focus:ring-1 focus:ring-[#d3b37a]"
+                : "border-stone-300/90 bg-white text-[#1d2026] focus:ring-1 focus:ring-[#775a19]"
+            }`}
+            menuClassName="w-full"
+          />
+        </div>
+      ) : null}
 
       <div className="space-y-3 pt-2">
         <div className="flex items-stretch gap-3">

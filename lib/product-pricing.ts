@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { calculateJewelryPrice, resolveProductMetalRate } from "@/lib/jewelry-pricing";
+import { ARTIFICIAL_GST_PERCENTAGE, isArtificialBaseMetal } from "@/lib/product-materials";
 
 export const productPricingSelect = {
   id: true,
@@ -45,8 +46,29 @@ export const productPricingSelect = {
 export type ProductWithPricing = Prisma.ProductGetPayload<{ select: typeof productPricingSelect }>;
 
 const toNumber = (value: Prisma.Decimal | number | null | undefined) => (value == null ? 0 : Number(value));
+const round2 = (value: number) => Math.round(value * 100) / 100;
 
 export function buildProductPricing(product: ProductWithPricing) {
+  if (isArtificialBaseMetal(product.baseMetal)) {
+    const compareAtPrice = product.compareAtPrice ? Number(product.compareAtPrice) : null;
+    const finalPrice = Number(product.price) > 0 ? Number(product.price) : 0;
+    const gstPercentage = toNumber(product.gstPercentage) > 0 ? toNumber(product.gstPercentage) : ARTIFICIAL_GST_PERCENTAGE;
+    const subtotalBeforeGst = gstPercentage > 0 ? round2(finalPrice / (1 + gstPercentage / 100)) : finalPrice;
+    const gstAmount = round2(finalPrice - subtotalBeforeGst);
+
+    return {
+      metalRate: 0,
+      metalPrice: 0,
+      makingCharge: 0,
+      stoneCost: 0,
+      huidCharge: 0,
+      subtotalBeforeGst,
+      gstAmount,
+      finalPrice,
+      compareAtPrice
+    };
+  }
+
   const metalRate = resolveProductMetalRate({
     baseMetal: product.baseMetal,
     activeGoldRate: product.activeGoldRate ? Number(product.activeGoldRate) : null,
@@ -71,7 +93,7 @@ export function buildProductPricing(product: ProductWithPricing) {
 
   const compareAtPrice = product.compareAtPrice ? Number(product.compareAtPrice) : null;
   const cachedPrice = Number(product.price);
-  const finalPrice = breakdown.finalPrice > 0 ? breakdown.finalPrice : cachedPrice;
+  const finalPrice = cachedPrice > 0 ? cachedPrice : breakdown.finalPrice;
 
   return {
     ...breakdown,

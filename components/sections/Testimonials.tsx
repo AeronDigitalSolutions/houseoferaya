@@ -5,19 +5,28 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { testimonials } from "@/lib/data";
+import type { HomepageTestimonialItem } from "@/lib/homepage-content";
 
-export function Testimonials() {
+type TestimonialsProps = {
+  testimonials?: HomepageTestimonialItem[];
+};
+
+export function Testimonials({ testimonials: items }: TestimonialsProps) {
+  const displayTestimonials =
+    items && items.length > 0
+      ? items.map((item) => ({ name: item.customerName, quote: item.quote, image: item.imageUrl }))
+      : testimonials;
   const [active, setActive] = useState(0);
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setActive((prev) => (prev + 1) % testimonials.length);
+      setActive((prev) => (prev + 1) % displayTestimonials.length);
     }, 4500);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [displayTestimonials.length]);
 
-  const current = testimonials[active];
+  const current = displayTestimonials[active];
 
   return (
     <section className="px-5 py-16 sm:px-8 sm:py-20 lg:px-12 md:py-24">
@@ -40,6 +49,7 @@ export function Testimonials() {
                 width={220}
                 height={220}
                 className="h-24 w-24 rounded-full object-cover sm:h-28 sm:w-28"
+                quality={70}
               />
               <div>
                 <p className="font-heading text-[2rem] leading-[0.95] text-royal-800 sm:text-[2.4rem]">“{current.quote}”</p>
@@ -49,7 +59,7 @@ export function Testimonials() {
           </AnimatePresence>
 
           <div className="mt-6 flex justify-center gap-2">
-            {testimonials.map((_, index) => (
+            {displayTestimonials.map((_, index) => (
               <button
                 key={index}
                 onClick={() => setActive(index)}

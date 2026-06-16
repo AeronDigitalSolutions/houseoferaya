@@ -14,6 +14,7 @@ const links: Array<{ href: string; label: string; key?: AdminPermissionKey }> = 
   { href: "/admin/orders", label: "Orders", key: "canViewOrders" },
   { href: "/admin/shipments", label: "Shipments", key: "canViewShipments" },
   { href: "/admin/payments", label: "Payments", key: "canViewPayments" },
+  { href: "/admin/twilio", label: "Twilio", key: "canViewPayments" },
   { href: "/admin/pricing-updates", label: "Pricing Updates", key: "canViewPricing" },
   { href: "/admin/homepage-media", label: "Homepage Media", key: "canManageHomepageMedia" },
   { href: "/admin/customers", label: "Customers", key: "canViewCustomers" },

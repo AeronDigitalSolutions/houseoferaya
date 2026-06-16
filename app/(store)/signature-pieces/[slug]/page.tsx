@@ -2,10 +2,13 @@ import { notFound } from "next/navigation";
 import { Crown, ShieldCheck, Sparkles, Star, Truck } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { formatCurrency } from "@/lib/format";
-import { calculateJewelryPrice, resolveProductMetalRate } from "@/lib/jewelry-pricing";
+import { buildProductPricing } from "@/lib/product-pricing";
 import { ProductImageGallery } from "@/components/product/ProductImageGallery";
 import { ProductPurchaseActions } from "@/components/product/ProductPurchaseActions";
+import { PincodeAvailabilityChecker } from "@/components/shipping/PincodeAvailabilityChecker";
 import { isSignatureProductSlug } from "@/lib/signature-piece";
+import { ARTIFICIAL_GST_PERCENTAGE, getStorefrontGemstone, getStorefrontWeight, isArtificialBaseMetal } from "@/lib/product-materials";
+import { isRingCategory } from "@/lib/product-category";
 
 export default async function SignatureProductDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -58,44 +61,38 @@ export default async function SignatureProductDetailPage({ params }: { params: P
     notFound();
   }
 
-  const metalRate = resolveProductMetalRate({
-    baseMetal: product.baseMetal,
-    activeGoldRate: product.activeGoldRate ? Number(product.activeGoldRate) : null,
-    activeSilverRate: product.activeSilverRate ? Number(product.activeSilverRate) : null,
-    useManualSellingRate: product.useManualSellingRate,
-    manualSellingRate: product.manualSellingRate ? Number(product.manualSellingRate) : null
-  });
-
-  const breakdown = calculateJewelryPrice({
-    baseMetal: product.baseMetal,
-    metalRate,
-    weightGrams: Number(product.weightGrams),
-    purityFactor: Number(product.purityFactor),
-    makingChargeType: product.makingChargeType,
-    makingChargeValue: Number(product.makingChargeValue),
-    stoneCostType: product.stoneCostType,
-    stoneCostValue: Number(product.stoneCostValue),
-    stoneCarat: product.stoneCarat ? Number(product.stoneCarat) : 0,
-    huidCharge: Number(product.huidCharge),
-    gstPercentage: Number(product.gstPercentage)
-  });
-
-  const displayPrice = breakdown.finalPrice > 0 ? breakdown.finalPrice : Number(product.price);
-  const compareAtPrice =
-    product.compareAtPrice ? Number(product.compareAtPrice) : Math.ceil((displayPrice * 1.22) / 500) * 500;
-  const discountPct = Math.max(0, Math.round(((compareAtPrice - displayPrice) / compareAtPrice) * 100));
-  const sizeOptions =
-    product.category?.slug === "necklaces"
-      ? ['Signature Chain (16")', 'Signature Chain (18")', 'Ceremonial Chain (20")']
-      : ["US 6 (Signature)", "US 7", "US 8", "US 9"];
+  const isArtificial = isArtificialBaseMetal(product.baseMetal);
+  const breakdown = buildProductPricing({ ...product, images: [] } as never);
+  const displayPrice = breakdown.finalPrice;
+  const compareAtPrice = breakdown.compareAtPrice;
+  const discountPct =
+    compareAtPrice && compareAtPrice > displayPrice
+      ? Math.max(0, Math.round(((compareAtPrice - displayPrice) / compareAtPrice) * 100))
+      : 0;
+  const showSizeSelector = isRingCategory(product.category?.slug, product.category?.name);
+  const sizeOptions = ["US 6 (Signature)", "US 7", "US 8", "US 9"];
   const lengthSpec = product.category?.slug === "necklaces" ? '16" - 20" Adjustable' : "Customizable Signature Fit";
   const galleryImages = product.images.length
     ? product.images.map((image) => image.url)
     : ["/assets/signature-ring.jpg", "/assets/collection-ring-vermilion.jpg", "/assets/collection-aura.jpg"];
+  const materialSummary = isArtificial
+    ? [
+        { label: "Material", value: "Artificial" },
+        { label: "Certification", value: product.certification || "In-house Certified" },
+        { label: "Collection", value: product.category?.name || "Collection", span: "col-span-2" }
+      ]
+    : [
+        { label: "Material", value: product.metalType },
+        { label: "Weight", value: getStorefrontWeight(product) },
+        { label: "Gemstone", value: getStorefrontGemstone(product) },
+        { label: "Length", value: lengthSpec, span: "col-span-2" }
+      ].filter((item) => Boolean(item.value));
 
   return (
-    <div className="space-y-7">
-      <section className="overflow-hidden rounded-[2rem] border border-[#d4b071]/40 bg-gradient-to-r from-[#081b56] via-[#0d2f84] to-[#091f63] p-5 shadow-[0_28px_58px_rgba(6,15,45,0.45)] sm:p-8">
+    <div className="relative left-1/2 right-1/2 -mx-[50vw] w-screen overflow-hidden bg-[#070f22] text-[#f5efe6]">
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.02)_0,rgba(255,255,255,0.02)_24%,transparent_24%,transparent_50%,rgba(255,255,255,0.02)_50%,rgba(255,255,255,0.02)_74%,transparent_74%,transparent_100%),radial-gradient(circle_at_18%_10%,rgba(26,51,120,0.44),transparent_32%),radial-gradient(circle_at_80%_18%,rgba(10,28,78,0.68),transparent_40%)]" />
+      <div className="relative mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 lg:py-12">
+        <section className="overflow-hidden rounded-[2rem] border border-[#d4b071]/40 bg-gradient-to-r from-[#081b56] via-[#0d2f84] to-[#091f63] p-5 shadow-[0_28px_58px_rgba(6,15,45,0.45)] sm:p-8">
         <div className="grid gap-7 lg:grid-cols-2">
           <div className="rounded-[1.6rem] border border-[#d8b16b]/50 bg-[#f7f4ef] p-3 shadow-[0_18px_34px_rgba(2,8,28,0.24)]">
             <ProductImageGallery productName={product.name} images={galleryImages} />
@@ -125,20 +122,15 @@ export default async function SignatureProductDetailPage({ params }: { params: P
 
               <div className="flex flex-wrap items-end gap-x-4 gap-y-1">
                 <span className="font-heading text-[44px] leading-none text-[#11275d]">{formatCurrency(displayPrice)}</span>
-                <span className="text-lg text-[#6e7380] line-through">{formatCurrency(compareAtPrice)}</span>
-                <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9c7740]">{discountPct}% OFF</span>
+                {compareAtPrice ? <span className="text-lg text-[#6e7380] line-through">{formatCurrency(compareAtPrice)}</span> : null}
+                {discountPct > 0 ? <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9c7740]">{discountPct}% OFF</span> : null}
               </div>
 
               <p className="text-[17px] leading-[1.8] text-[#3f4965]">{product.description}</p>
 
-              <div className="rounded-2xl border border-[#d7c8aa] bg-gradient-to-b from-white to-[#f7f2e8] p-3.5">
+                <div className="rounded-2xl border border-[#d7c8aa] bg-gradient-to-b from-white to-[#f7f2e8] p-3.5">
                 <div className="grid grid-cols-2 gap-3">
-                  {[
-                    { label: "Material", value: product.metalType },
-                    { label: "Weight", value: product.weight },
-                    { label: "Gemstone", value: product.gemstone },
-                    { label: "Length", value: lengthSpec, span: "col-span-2" }
-                  ].map((item) => (
+                  {materialSummary.map((item) => (
                     <div key={item.label} className={`rounded-xl border border-[#e2d8c5] bg-white px-4 py-3 ${item.span ?? ""}`}>
                       <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#7b7f89]">{item.label}</p>
                       <p className="mt-1.5 text-[16px] font-semibold text-[#1f2739]">{item.value}</p>
@@ -148,28 +140,49 @@ export default async function SignatureProductDetailPage({ params }: { params: P
               </div>
 
               <div className="rounded-2xl border border-[#d7c8aa] bg-[#fbf8f1] p-4">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#7b7f89]">Signature Pricing Breakdown</p>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#7b7f89]">
+                  {isArtificial ? "Artificial Pricing" : "Signature Pricing Breakdown"}
+                </p>
                 <div className="mt-3 space-y-2 text-sm text-[#4e5561]">
-                  <div className="flex items-center justify-between">
-                    <span>Metal Value</span>
-                    <span>{formatCurrency(breakdown.metalPrice)}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Making Charges</span>
-                    <span>{formatCurrency(breakdown.makingCharge)}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Stone Cost</span>
-                    <span>{formatCurrency(breakdown.stoneCost)}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>HUID Charges</span>
-                    <span>{formatCurrency(breakdown.huidCharge)}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>GST ({Number(product.gstPercentage)}%)</span>
-                    <span>{formatCurrency(breakdown.gstAmount)}</span>
-                  </div>
+                  {isArtificial ? (
+                    <>
+                      <div className="flex items-center justify-between">
+                        <span>MRP</span>
+                        <span>{compareAtPrice ? formatCurrency(compareAtPrice) : "--"}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>Offer Price</span>
+                        <span>{formatCurrency(displayPrice)}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>GST ({ARTIFICIAL_GST_PERCENTAGE}%)</span>
+                        <span>{formatCurrency(breakdown.gstAmount)}</span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-between">
+                        <span>Metal Value</span>
+                        <span>{formatCurrency(breakdown.metalPrice)}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>Making Charges</span>
+                        <span>{formatCurrency(breakdown.makingCharge)}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>Stone Cost</span>
+                        <span>{formatCurrency(breakdown.stoneCost)}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>HUID Charges</span>
+                        <span>{formatCurrency(breakdown.huidCharge)}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>GST ({Number(product.gstPercentage)}%)</span>
+                        <span>{formatCurrency(breakdown.gstAmount)}</span>
+                      </div>
+                    </>
+                  )}
                   <div className="border-t border-[#e4dbc8] pt-2 text-base font-semibold text-[#162241]">
                     <div className="flex items-center justify-between">
                       <span>Final Signature Price</span>
@@ -179,10 +192,13 @@ export default async function SignatureProductDetailPage({ params }: { params: P
                 </div>
               </div>
 
+              <PincodeAvailabilityChecker variant="signature" />
+
               <ProductPurchaseActions
                 productSlug={product.slug}
                 productName={product.name}
                 sizeOptions={sizeOptions}
+                showSizeSelector={showSizeSelector}
                 theme="signature"
               />
             </div>
@@ -203,7 +219,8 @@ export default async function SignatureProductDetailPage({ params }: { params: P
             <span>Ceremonial Packaging Experience</span>
           </div>
         </div>
-      </section>
+        </section>
+      </div>
     </div>
   );
 }

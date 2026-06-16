@@ -45,6 +45,8 @@ export default function AddressManagementPage() {
   const [saving, setSaving] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [pincodeLookupLoading, setPincodeLookupLoading] = useState(false);
+  const [pincodeLookupNotice, setPincodeLookupNotice] = useState("");
 
   const modalTitle = useMemo(
     () => (editingAddressId ? "Edit Address" : "Add New Address"),
@@ -106,11 +108,71 @@ export default function AddressManagementPage() {
     setIsModalOpen(false);
     setEditingAddressId(null);
     setForm(emptyAddress);
+    setPincodeLookupNotice("");
   };
 
   const onChangeField = (field: keyof AddressFormState, value: string | boolean) => {
     setForm((prev) => ({ ...prev, [field]: value }));
+    if (field === "pincode") {
+      setPincodeLookupNotice("");
+      setErrorMessage("");
+    }
   };
+
+  useEffect(() => {
+    if (!isModalOpen) return;
+
+    const normalizedPincode = form.pincode.replace(/\D/g, "").slice(0, 6);
+    if (normalizedPincode !== form.pincode) {
+      setForm((prev) => ({ ...prev, pincode: normalizedPincode }));
+      return;
+    }
+
+    if (normalizedPincode.length !== 6) {
+      setPincodeLookupLoading(false);
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      void (async () => {
+        setPincodeLookupLoading(true);
+        setErrorMessage("");
+        try {
+          const response = await fetch("/api/shipping/check-pincode", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ pincode: normalizedPincode })
+          });
+          const data = await response.json();
+
+          if (!response.ok || !data?.success || !data?.isServiceable) {
+            setPincodeLookupNotice("");
+            setErrorMessage(data?.message || "This pincode is not serviceable for secure shipping.");
+            return;
+          }
+
+          setForm((prev) => ({
+            ...prev,
+            city: String(data?.data?.city || prev.city || "").trim(),
+            state: String(data?.data?.state || prev.state || "").trim(),
+            country: prev.country || "India"
+          }));
+          setPincodeLookupNotice(
+            [data?.data?.city, data?.data?.state].filter(Boolean).length
+              ? `Delivery available in ${[data?.data?.city, data?.data?.state].filter(Boolean).join(", ")}.`
+              : "Delivery available for this pincode."
+          );
+        } catch {
+          setPincodeLookupNotice("");
+          setErrorMessage("Unable to verify pincode right now.");
+        } finally {
+          setPincodeLookupLoading(false);
+        }
+      })();
+    }, 350);
+
+    return () => window.clearTimeout(timeout);
+  }, [form.pincode, isModalOpen]);
 
   const saveAddress = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -122,10 +184,29 @@ export default function AddressManagementPage() {
     const method = editingAddressId ? "PUT" : "POST";
 
     try {
+      const shippingCheckRes = await fetch("/api/shipping/check-pincode", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pincode: form.pincode })
+      });
+      const shippingCheckData = await shippingCheckRes.json();
+
+      if (!shippingCheckRes.ok || !shippingCheckData?.success || !shippingCheckData?.isServiceable) {
+        setErrorMessage(shippingCheckData?.message || "This pincode is not serviceable for secure shipping.");
+        return;
+      }
+
+      const payload = {
+        ...form,
+        city: String(shippingCheckData?.data?.city || form.city || "").trim(),
+        state: String(shippingCheckData?.data?.state || form.state || "").trim(),
+        country: String(form.country || "India").trim()
+      };
+
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form)
+        body: JSON.stringify(payload)
       });
       const data = await res.json();
       if (!res.ok) {
@@ -347,9 +428,11 @@ export default function AddressManagementPage() {
                 <input
                   required
                   value={form.pincode}
-                  onChange={(event) => onChangeField("pincode", event.target.value)}
+                  onChange={(event) => onChangeField("pincode", event.target.value.replace(/\D/g, "").slice(0, 6))}
                   className="rounded-xl border border-black/15 bg-white px-3 py-3 text-sm text-royal-800 outline-none placeholder:text-royal-700/40 focus:border-[#9c7346]/55"
                   placeholder="Pincode"
+                  inputMode="numeric"
+                  maxLength={6}
                 />
 
                 <input
@@ -370,6 +453,9 @@ export default function AddressManagementPage() {
                   Mark as default address
                 </label>
               </div>
+
+              {pincodeLookupLoading ? <p className="text-sm text-royal-700/70">Checking pincode serviceability...</p> : null}
+              {pincodeLookupNotice ? <p className="text-sm text-emerald-700">{pincodeLookupNotice}</p> : null}
 
               <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end">
                 <button

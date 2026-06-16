@@ -2,6 +2,8 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { ShieldCheck, UserPlus, X } from "lucide-react";
+import { AdminPagination } from "@/components/admin/AdminPagination";
+import { useBrandDialog } from "@/components/providers/BrandDialogProvider";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import {
   adminPermissionKeys,
@@ -42,6 +44,7 @@ const permissionMeta: Record<AdminPermissionKey, string> = {
   canManageHomepageMedia: "Manage homepage media",
   canManageAdmins: "Manage admins"
 };
+const PAGE_SIZE = 20;
 
 function ModalShell({
   title,
@@ -82,7 +85,9 @@ function ModalShell({
 }
 
 export function AdminAccessManager() {
+  const { prompt } = useBrandDialog();
   const [admins, setAdmins] = useState<AdminRecord[]>([]);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -102,6 +107,17 @@ export function AdminAccessManager() {
   const [selectedIsActive, setSelectedIsActive] = useState(true);
 
   const canManageAdmins = viewerRole === "SUPER_ADMIN" || viewerPermissions.canManageAdmins;
+  const totalPages = Math.max(1, Math.ceil(admins.length / PAGE_SIZE));
+  const pageAdmins = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return admins.slice(start, start + PAGE_SIZE);
+  }, [admins, page]);
+
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -126,6 +142,7 @@ export function AdminAccessManager() {
         setMessage({ type: "error", text: usersData.message || "Failed to load admins." });
       } else {
         setAdmins(usersData.users || []);
+        setPage(1);
       }
     } catch {
       setMessage({ type: "error", text: "Failed to load admin data." });
@@ -213,7 +230,13 @@ export function AdminAccessManager() {
   const resetAdminPassword = async () => {
     if (!selectedAdmin || !canManageAdmins || selectedAdmin.role === "SUPER_ADMIN") return;
 
-    const newPassword = window.prompt(`Set new password for ${selectedAdmin.name} (min 8 chars):`);
+    const newPassword = await prompt({
+      title: "Reset Admin Password",
+      message: `Set a new password for ${selectedAdmin.name}. Minimum 8 characters.`,
+      placeholder: "Enter new password",
+      confirmLabel: "Reset Password",
+      cancelLabel: "Cancel"
+    });
     if (!newPassword) return;
     if (newPassword.length < 8) {
       setMessage({ type: "error", text: "Password must be at least 8 characters." });
@@ -293,7 +316,7 @@ export function AdminAccessManager() {
             </div>
 
             <div className="divide-y divide-stone-200">
-              {admins.map((admin) => (
+              {pageAdmins.map((admin) => (
                 <button
                   key={admin.id}
                   type="button"
@@ -323,6 +346,16 @@ export function AdminAccessManager() {
             </div>
           </div>
         )}
+
+        <AdminPagination
+          page={page}
+          totalPages={totalPages}
+          totalItems={admins.length}
+          pageSize={PAGE_SIZE}
+          currentCount={pageAdmins.length}
+          onPageChange={setPage}
+          itemLabel="admins"
+        />
       </section>
 
       {message ? (

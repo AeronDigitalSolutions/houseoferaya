@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, Plus, RefreshCw, UnlockKeyhole } from "lucide-react";
 import { MetalRateCard } from "@/components/admin/pricing/MetalRateCard";
 import { PricingSummaryCards } from "@/components/admin/pricing/PricingSummaryCards";
@@ -12,28 +12,12 @@ import { formatCurrency } from "@/components/admin/pricing/utils";
 
 type LiveRatesResponse = {
   success: boolean;
-  source: string;
-  currency: string;
-  rates: {
-    gold: {
-      metal: string;
-      symbol: "XAU";
-      liveRatePerGram: number;
-      unit: "gram";
-      updatedAt: string;
-    };
-    silver: {
-      metal: string;
-      symbol: "XAG";
-      liveRatePerGram: number;
-      unit: "gram";
-      updatedAt: string;
-    };
-  };
+  source: string | null;
+  liveSync: "ok" | "error";
+  rates: MetalRate[];
   message?: string;
 };
 
-// TODO: Replace defaults with backend-persisted selling rates when pricing settings API is ready.
 const initialRates: MetalRate[] = [
   {
     id: "gold",
@@ -122,8 +106,11 @@ export default function AdminPricingUpdatesPage() {
   const [statusMessage, setStatusMessage] = useState<{ type: "success" | "error" | "info"; text: string } | null>(null);
   const [logs, setLogs] = useState<ActivityLogItem[]>(initialLogs);
   const [isFetchingLive, setIsFetchingLive] = useState(false);
+  const [autoSyncStatus, setAutoSyncStatus] = useState<"idle" | "ok" | "error">("idle");
+  const liveFetchInFlightRef = useRef(false);
+  const mountedRef = useRef(true);
 
-  const appendLogs = (entries: Omit<ActivityLogItem, "id" | "timestamp">[]) => {
+  const appendLogs = useCallback((entries: Omit<ActivityLogItem, "id" | "timestamp">[]) => {
     if (!entries.length) return;
     setLogs((prev) => [
       ...entries.map((entry) => ({
@@ -134,9 +121,23 @@ export default function AdminPricingUpdatesPage() {
       ...prev
     ]);
     // TODO: Persist activity logs to backend audit API.
-  };
+  }, []);
 
   const getMetalName = (id: MetalId) => (id === "gold" ? "Gold" : "Silver");
+
+  const mutatePricingRates = useCallback(async (payload: Record<string, unknown>) => {
+    const response = await fetch("/api/admin/pricing/rates", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const body = (await response.json()) as LiveRatesResponse;
+    if (!response.ok || !body.success) {
+      throw new Error(body.message || "Unable to update pricing rates.");
+    }
+    setRates(body.rates);
+    setAutoSyncStatus(body.liveSync === "ok" ? "ok" : "error");
+  }, []);
 
   const onSavePrice = (id: MetalId, price: number) => {
     const activity: Omit<ActivityLogItem, "id" | "timestamp">[] = [];
@@ -162,6 +163,9 @@ export default function AdminPricingUpdatesPage() {
     );
     appendLogs(activity);
     setStatusMessage({ type: "success", text: `${getMetalName(id)} selling rate saved successfully.` });
+    void mutatePricingRates({ action: "savePrice", id, price }).catch(() => {
+      setStatusMessage({ type: "error", text: "Could not sync saved rate to server. Please retry." });
+    });
   };
 
   const onLock = (id: MetalId, duration: LockDuration, customUntil: string | null) => {
@@ -203,6 +207,9 @@ export default function AdminPricingUpdatesPage() {
 
     appendLogs(activity);
     setStatusMessage({ type: "success", text: `${getMetalName(id)} selling rate locked.` });
+    void mutatePricingRates({ action: "lock", id, duration, customUntil }).catch(() => {
+      setStatusMessage({ type: "error", text: "Could not sync lock state to server. Please retry." });
+    });
   };
 
   const onUnlock = (id: MetalId) => {
@@ -233,6 +240,9 @@ export default function AdminPricingUpdatesPage() {
     );
     appendLogs(activity);
     setStatusMessage({ type: "success", text: `${getMetalName(id)} selling rate unlocked.` });
+    void mutatePricingRates({ action: "unlock", id }).catch(() => {
+      setStatusMessage({ type: "error", text: "Could not sync unlock state to server. Please retry." });
+    });
   };
 
   const lockAll = () => {
@@ -265,6 +275,9 @@ export default function AdminPricingUpdatesPage() {
 
     appendLogs(activity);
     setStatusMessage({ type: "success", text: "All selling rates locked for today." });
+    void mutatePricingRates({ action: "lockAll" }).catch(() => {
+      setStatusMessage({ type: "error", text: "Could not sync lock-all state to server. Please retry." });
+    });
   };
 
   const unlockAll = () => {
@@ -296,75 +309,96 @@ export default function AdminPricingUpdatesPage() {
 
     appendLogs(activity);
     setStatusMessage({ type: "info", text: "All selling rates unlocked." });
+    void mutatePricingRates({ action: "unlockAll" }).catch(() => {
+      setStatusMessage({ type: "error", text: "Could not sync unlock-all state to server. Please retry." });
+    });
   };
 
-  const fetchLiveRates = async () => {
-    setIsFetchingLive(true);
-    setStatusMessage(null);
+  const fetchLiveRates = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
+    if (liveFetchInFlightRef.current) return;
+    liveFetchInFlightRef.current = true;
+
+    if (!silent) {
+      setIsFetchingLive(true);
+      setStatusMessage(null);
+    }
+
     try {
-      const response = await fetch("/api/metal-rates/live", {
+      const response = await fetch("/api/admin/pricing/rates", {
         method: "GET",
         cache: "no-store"
       });
       const payload = (await response.json()) as LiveRatesResponse;
       if (!response.ok || !payload.success) {
-        throw new Error(payload.message || "Live rate fetch failed.");
+        throw new Error(payload.message || "Rate fetch failed.");
       }
 
-      const liveByMetal: Record<MetalId, { rate: number; updatedAt: string }> = {
-        gold: {
-          rate: Number(payload.rates.gold.liveRatePerGram),
-          updatedAt: payload.rates.gold.updatedAt
-        },
-        silver: {
-          rate: Number(payload.rates.silver.liveRatePerGram),
-          updatedAt: payload.rates.silver.updatedAt
+      setRates((prev) => {
+        if (!silent) {
+          const activity: Omit<ActivityLogItem, "id" | "timestamp">[] = [];
+          for (const previousRate of prev) {
+            const nextRate = payload.rates.find((item) => item.id === previousRate.id);
+            if (!nextRate) continue;
+            activity.push({
+              metal: previousRate.name,
+              oldRate: previousRate.sellingRate,
+              newRate: nextRate.sellingRate,
+              changeAmount: Number((nextRate.sellingRate - previousRate.sellingRate).toFixed(2)),
+              action: "Live Rate Refreshed",
+              status: "Info",
+              updatedBy: "System Live"
+            });
+          }
+          appendLogs(activity);
         }
-      };
-
-      const activity: Omit<ActivityLogItem, "id" | "timestamp">[] = [];
-      setRates((prev) =>
-        prev.map((rate) => {
-          const live = liveByMetal[rate.id];
-          const oldSelling = rate.sellingRate;
-          const nextSelling = rate.status === "UNLOCKED" ? live.rate : rate.sellingRate;
-
-          activity.push({
-            metal: rate.name,
-            oldRate: oldSelling,
-            newRate: nextSelling,
-            changeAmount: nextSelling - oldSelling,
-            action: "Live Rate Refreshed",
-            status: "Info",
-            updatedBy: "System Live"
-          });
-
-          return {
-            ...rate,
-            liveMarketRate: live.rate,
-            liveFetchedAt: live.updatedAt,
-            liveSource: payload.source,
-            sellingRate: nextSelling,
-            lockedRate: rate.status === "LOCKED" ? rate.lockedRate : null,
-            lastUpdated: rate.status === "UNLOCKED" ? new Date().toISOString() : rate.lastUpdated
-          };
-        })
-      );
-
-      appendLogs(activity);
-      setStatusMessage({
-        type: "success",
-        text: "Live market rates fetched from gold-api.com. Manual lock settings remain active."
+        return payload.rates;
       });
+
+      if (!silent) {
+        setStatusMessage({
+          type: payload.liveSync === "ok" ? "success" : "info",
+          text:
+            payload.liveSync === "ok"
+              ? "Live market rates synced. Lock settings remain active."
+              : "Rates loaded. Live sync had a temporary issue, retry will continue."
+        });
+      }
+
+      if (mountedRef.current) {
+        setAutoSyncStatus(payload.liveSync === "ok" ? "ok" : "error");
+      }
     } catch {
-      setStatusMessage({
-        type: "error",
-        text: "Live rate fetch failed. Manual rates are still active."
-      });
+      if (!silent) {
+        setStatusMessage({
+          type: "error",
+          text: "Live rate fetch failed. Manual rates are still active."
+        });
+      }
+
+      if (mountedRef.current) {
+        setAutoSyncStatus("error");
+      }
     } finally {
-      setIsFetchingLive(false);
+      if (!silent && mountedRef.current) {
+        setIsFetchingLive(false);
+      }
+      liveFetchInFlightRef.current = false;
     }
-  };
+  }, [appendLogs]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    void fetchLiveRates({ silent: true });
+
+    const intervalId = setInterval(() => {
+      void fetchLiveRates({ silent: true });
+    }, 5000);
+
+    return () => {
+      mountedRef.current = false;
+      clearInterval(intervalId);
+    };
+  }, [fetchLiveRates]);
 
   const latestLiveFetchAt = useMemo(() => {
     const values = rates.map((rate) => rate.liveFetchedAt).filter(Boolean) as string[];
@@ -391,6 +425,10 @@ export default function AdminPricingUpdatesPage() {
               Live rates are indicative market rates. Final selling rates can be manually edited or locked by admin.
             </p>
             <p className="mt-1 text-xs text-stone-500">Last live fetch: {latestLiveFetchAt}</p>
+            <p className="mt-1 text-xs text-stone-500">
+              Auto-sync: every 5 seconds
+              {autoSyncStatus === "ok" ? " • Active" : autoSyncStatus === "error" ? " • Retry in progress" : ""}
+            </p>
           </div>
 
           <div className="pb-1">

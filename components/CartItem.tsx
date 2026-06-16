@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Crown } from "lucide-react";
 import { formatCurrency } from "@/lib/format";
+import { SafeImage } from "@/components/ui/SafeImage";
 import type { CartLine } from "@/lib/types";
 import { isSignatureProductSlug } from "@/lib/signature-piece";
 
@@ -19,6 +20,12 @@ export function CartItem({ item, onIncrease, onDecrease, onRemove, onMoveToWishl
   const lineTotal = item.product.price * item.quantity;
   const isSignature = Boolean(item.product.isSignature || isSignatureProductSlug(item.product.slug));
   const productHref = isSignature ? `/signature-pieces/${item.product.slug}` : `/products/${item.product.slug}`;
+  const detailChips = [
+    { label: "SKU", value: item.product.sku },
+    { label: "Weight", value: item.product.weight },
+    { label: "Stone", value: item.product.gemstone },
+    { label: "Cert", value: item.product.certification }
+  ].filter((chip) => Boolean(chip.value));
 
   return (
     <article
@@ -30,7 +37,7 @@ export function CartItem({ item, onIncrease, onDecrease, onRemove, onMoveToWishl
     >
       <div className="grid gap-4 sm:grid-cols-[118px_1fr]">
         <Link href={productHref} className="block overflow-hidden rounded-2xl bg-stone-100">
-          <img
+          <SafeImage
             src={item.product.image}
             alt={item.product.name}
             className="h-[118px] w-full object-cover transition duration-500 hover:scale-105 sm:w-[118px]"
@@ -67,40 +74,24 @@ export function CartItem({ item, onIncrease, onDecrease, onRemove, onMoveToWishl
             </p>
           </div>
 
-          <div
-            className={`grid grid-cols-2 gap-2 text-xs sm:grid-cols-4 ${
-              isSignature ? "text-[#d7c8af]/95" : "text-royal-700/75"
-            }`}
-          >
+          {detailChips.length ? (
             <div
-              className={`rounded-lg px-2 py-1.5 ${
-                isSignature ? "border border-[#d5b77f]/35 bg-[#0b1e56]/65" : "border border-black/10 bg-[#fbf7f1]"
+              className={`grid grid-cols-2 gap-2 text-xs sm:grid-cols-4 ${
+                isSignature ? "text-[#d7c8af]/95" : "text-royal-700/75"
               }`}
             >
-              SKU: {item.product.sku}
+              {detailChips.map((chip) => (
+                <div
+                  key={chip.label}
+                  className={`rounded-lg px-2 py-1.5 ${
+                    isSignature ? "border border-[#d5b77f]/35 bg-[#0b1e56]/65" : "border border-black/10 bg-[#fbf7f1]"
+                  }`}
+                >
+                  {chip.label}: {chip.value}
+                </div>
+              ))}
             </div>
-            <div
-              className={`rounded-lg px-2 py-1.5 ${
-                isSignature ? "border border-[#d5b77f]/35 bg-[#0b1e56]/65" : "border border-black/10 bg-[#fbf7f1]"
-              }`}
-            >
-              Weight: {item.product.weight}
-            </div>
-            <div
-              className={`rounded-lg px-2 py-1.5 ${
-                isSignature ? "border border-[#d5b77f]/35 bg-[#0b1e56]/65" : "border border-black/10 bg-[#fbf7f1]"
-              }`}
-            >
-              Stone: {item.product.gemstone}
-            </div>
-            <div
-              className={`rounded-lg px-2 py-1.5 ${
-                isSignature ? "border border-[#d5b77f]/35 bg-[#0b1e56]/65" : "border border-black/10 bg-[#fbf7f1]"
-              }`}
-            >
-              Cert: {item.product.certification}
-            </div>
-          </div>
+          ) : null}
 
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="inline-flex items-center rounded-full border border-black/12 bg-white p-1">

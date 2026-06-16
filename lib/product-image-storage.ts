@@ -1,7 +1,8 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { getUploadsSubdirectory } from "@/lib/upload-storage";
 
-const PRODUCT_UPLOADS_ROOT = path.join(process.cwd(), "public", "uploads", "products");
+const PRODUCT_UPLOADS_ROOT = getUploadsSubdirectory("products");
 
 const ALLOWED_MIME_TYPES = new Set([
   "image/jpeg",
@@ -121,4 +122,3 @@ export async function deleteProductImage(productSlug: string, fileName: string) 
   const filePath = path.join(absoluteDir, safeFileName);
   await fs.unlink(filePath);
 }
-

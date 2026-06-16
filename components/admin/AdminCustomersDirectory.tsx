@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Heart, MapPin, Package, UserRound, X } from "lucide-react";
+import { Heart, MapPin, Package, X } from "lucide-react";
+import { AdminPagination } from "@/components/admin/AdminPagination";
 import { CustomSelect } from "@/components/ui/CustomSelect";
 
 type CustomerAddress = {
@@ -76,6 +77,8 @@ type CustomerRow = {
 type Props = {
   customers: CustomerRow[];
 };
+
+const PAGE_SIZE = 20;
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("en-IN", {
@@ -335,7 +338,6 @@ export function AdminCustomersDirectory({ customers }: Props) {
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "orders-desc" | "ltv-desc" | "recent-order">(
     "newest"
   );
-  const [pageSize, setPageSize] = useState(10);
   const [page, setPage] = useState(1);
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerRow | null>(null);
 
@@ -368,11 +370,11 @@ export function AdminCustomersDirectory({ customers }: Props) {
     return result;
   }, [customers, orderFilter, query, sortBy, statusFilter]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredCustomers.length / pageSize));
+  const totalPages = Math.max(1, Math.ceil(filteredCustomers.length / PAGE_SIZE));
 
   useEffect(() => {
     setPage(1);
-  }, [query, statusFilter, orderFilter, sortBy, pageSize]);
+  }, [query, statusFilter, orderFilter, sortBy]);
 
   useEffect(() => {
     if (page > totalPages) {
@@ -381,21 +383,13 @@ export function AdminCustomersDirectory({ customers }: Props) {
   }, [page, totalPages]);
 
   const pageItems = useMemo(() => {
-    const start = (page - 1) * pageSize;
-    return filteredCustomers.slice(start, start + pageSize);
-  }, [filteredCustomers, page, pageSize]);
+    const start = (page - 1) * PAGE_SIZE;
+    return filteredCustomers.slice(start, start + PAGE_SIZE);
+  }, [filteredCustomers, page]);
 
   return (
     <>
       <section className="card overflow-hidden p-0">
-        <div className="border-b border-stone-200 px-5 py-4">
-          <h3 className="font-heading text-2xl text-stone-900">Customer Directory</h3>
-          <p className="mt-1 text-sm text-stone-600">Real user data with profile details, order count, and lifetime value.</p>
-          <p className="mt-2 inline-flex items-center gap-1 rounded-full border border-stone-200 bg-stone-50 px-2.5 py-1 text-xs text-stone-600">
-            <UserRound size={13} /> Tap or click a customer row to view full details.
-          </p>
-        </div>
-
         <div className="grid gap-3 border-b border-stone-200 bg-stone-50 px-5 py-4 lg:grid-cols-[2fr_1fr_1fr_1fr]">
           <label>
             <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-stone-500">Search</span>
@@ -542,46 +536,15 @@ export function AdminCustomersDirectory({ customers }: Props) {
           </>
         )}
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-stone-200 px-5 py-4">
-          <label className="flex items-center gap-2 text-sm text-stone-600">
-            Rows
-            <CustomSelect
-              value={String(pageSize)}
-              onValueChange={(value) => setPageSize(Number(value))}
-              options={[
-                { value: "5", label: "5" },
-                { value: "10", label: "10" },
-                { value: "20", label: "20" },
-                { value: "50", label: "50" }
-              ]}
-              buttonClassName="w-[72px] rounded-lg border border-stone-300 bg-white px-2 py-1 text-sm text-stone-800"
-              menuClassName="w-[96px]"
-            />
-          </label>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setPage((prev) => Math.max(1, prev - 1))}
-              disabled={page === 1}
-              className="rounded-full border border-stone-300 px-3 py-1.5 text-sm text-stone-700 disabled:opacity-40"
-            >
-              Prev
-            </button>
-            <p className="text-sm text-stone-700">
-              Page <span className="font-semibold text-stone-900">{page}</span> of{" "}
-              <span className="font-semibold text-stone-900">{totalPages}</span>
-            </p>
-            <button
-              type="button"
-              onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
-              disabled={page >= totalPages}
-              className="rounded-full border border-stone-300 px-3 py-1.5 text-sm text-stone-700 disabled:opacity-40"
-            >
-              Next
-            </button>
-          </div>
-        </div>
+        <AdminPagination
+          page={page}
+          totalPages={totalPages}
+          totalItems={filteredCustomers.length}
+          pageSize={PAGE_SIZE}
+          currentCount={pageItems.length}
+          onPageChange={setPage}
+          itemLabel="customers"
+        />
       </section>
 
       {selectedCustomer ? <CustomerDetailsModal customer={selectedCustomer} onClose={() => setSelectedCustomer(null)} /> : null}

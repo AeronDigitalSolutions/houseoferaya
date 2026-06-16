@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Check, ClipboardList, CreditCard, Package, Truck, X } from "lucide-react";
+import { AdminPagination } from "@/components/admin/AdminPagination";
 import { StatusBadge } from "@/components/StatusBadge";
 import { CustomSelect } from "@/components/ui/CustomSelect";
 import { formatCurrency } from "@/lib/format";
@@ -99,6 +100,7 @@ const SHIPPING_STATUS_OPTIONS: ShippingStatus[] = [
   "DELIVERED",
   "RETURNED"
 ];
+const PAGE_SIZE = 20;
 
 function formatDateTime(value?: string | null) {
   if (!value) return "—";
@@ -155,13 +157,16 @@ function AddressCard({ title, address }: { title: string; address: AddressBlock 
 function OrderDetailsModal({
   order,
   saving,
+  shipmentBusy,
   statusError,
   statusMessage,
   onClose,
-  onSaveStatus
+  onSaveStatus,
+  onSyncShipment
 }: {
   order: AdminOrder;
   saving: boolean;
+  shipmentBusy: boolean;
   statusError: string;
   statusMessage: string;
   onClose: () => void;
@@ -170,6 +175,7 @@ function OrderDetailsModal({
     paymentStatus: PaymentStatus;
     shippingStatus: ShippingStatus;
   }) => Promise<void>;
+  onSyncShipment: (orderId: string) => Promise<void>;
 }) {
   const [orderStatus, setOrderStatus] = useState<OrderStatus>(order.orderStatus);
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(order.paymentStatus);
@@ -388,12 +394,32 @@ function OrderDetailsModal({
             </article>
 
             <article className="rounded-2xl border border-stone-200 bg-white p-4 sm:p-5">
-              <div className="flex items-center gap-2">
-                <Truck size={16} className="text-stone-500" />
-                <h4 className="font-heading text-lg text-stone-900">Shipment Details</h4>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <Truck size={16} className="text-stone-500" />
+                  <h4 className="font-heading text-lg text-stone-900">Shipment Details</h4>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void onSyncShipment(order.id)}
+                  disabled={shipmentBusy || (!order.shipment && order.paymentStatus !== "PAID")}
+                  className="inline-flex items-center rounded-full border border-stone-300 bg-white px-3 py-1.5 text-xs uppercase tracking-[0.14em] text-stone-700 transition hover:border-stone-500 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {shipmentBusy
+                    ? "Syncing..."
+                    : !order.shipment && order.paymentStatus !== "PAID"
+                      ? "Awaiting Successful Payment"
+                      : order.shipment
+                        ? "Refresh Sequel Tracking"
+                        : "Create Sequel Shipment"}
+                </button>
               </div>
               {!order.shipment ? (
-                <p className="mt-3 text-sm text-stone-600">Shipment not created yet.</p>
+                <p className="mt-3 text-sm text-stone-600">
+                  {order.paymentStatus === "PAID"
+                    ? "Shipment not created yet. Create one to generate the Sequel docket and tracking link."
+                    : "Shipment creation is locked until payment is marked successful."}
+                </p>
               ) : (
                 <div className="mt-3 space-y-2 rounded-xl border border-stone-200 bg-stone-50 p-3 text-sm text-stone-700">
                   <div className="flex flex-wrap items-center gap-2">
@@ -459,10 +485,10 @@ export function AdminOrdersManager({ initialOrders }: Props) {
   const [paymentStatusFilter, setPaymentStatusFilter] = useState<"all" | PaymentStatus>("all");
   const [shippingStatusFilter, setShippingStatusFilter] = useState<"all" | ShippingStatus>("all");
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "high-total" | "low-total">("newest");
-  const [pageSize, setPageSize] = useState(10);
   const [page, setPage] = useState(1);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [savingStatus, setSavingStatus] = useState(false);
+  const [shipmentBusy, setShipmentBusy] = useState(false);
   const [statusError, setStatusError] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
 
@@ -497,20 +523,20 @@ export function AdminOrdersManager({ initialOrders }: Props) {
     return list;
   }, [orders, paymentStatusFilter, query, shippingStatusFilter, sortBy, orderStatusFilter]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredOrders.length / pageSize));
+  const totalPages = Math.max(1, Math.ceil(filteredOrders.length / PAGE_SIZE));
 
   useEffect(() => {
     setPage(1);
-  }, [query, orderStatusFilter, paymentStatusFilter, shippingStatusFilter, sortBy, pageSize]);
+  }, [query, orderStatusFilter, paymentStatusFilter, shippingStatusFilter, sortBy]);
 
   useEffect(() => {
     if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
 
   const pageOrders = useMemo(() => {
-    const start = (page - 1) * pageSize;
-    return filteredOrders.slice(start, start + pageSize);
-  }, [filteredOrders, page, pageSize]);
+    const start = (page - 1) * PAGE_SIZE;
+    return filteredOrders.slice(start, start + PAGE_SIZE);
+  }, [filteredOrders, page]);
 
   const selectedOrder = useMemo(
     () => orders.find((order) => order.id === selectedOrderId) || null,
@@ -571,6 +597,52 @@ export function AdminOrdersManager({ initialOrders }: Props) {
       setStatusError("Unable to update order status.");
     } finally {
       setSavingStatus(false);
+    }
+  };
+
+  const handleShipmentSync = async (orderId: string) => {
+    setShipmentBusy(true);
+    setStatusError("");
+    setStatusMessage("");
+
+    try {
+      const res = await fetch("/api/shipping/create-shipment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId })
+      });
+
+      const data = (await res.json()) as {
+        success: boolean;
+        message?: string;
+        order?: {
+          id: string;
+          shippingStatus: ShippingStatus;
+        };
+        shipment?: ShipmentItem;
+      };
+
+      if (!res.ok || !data.success || !data.order) {
+        setStatusError(data.message || "Unable to sync shipment with Sequel.");
+        return;
+      }
+
+      setOrders((current) =>
+        current.map((order) => {
+          if (order.id !== data.order!.id) return order;
+          return {
+            ...order,
+            shippingStatus: data.order!.shippingStatus,
+            shipment: data.shipment || order.shipment,
+            updatedAt: new Date().toISOString()
+          };
+        })
+      );
+      setStatusMessage(data.message || "Shipment synced successfully.");
+    } catch {
+      setStatusError("Unable to sync shipment with Sequel.");
+    } finally {
+      setShipmentBusy(false);
     }
   };
 
@@ -742,55 +814,27 @@ export function AdminOrdersManager({ initialOrders }: Props) {
           </>
         )}
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-stone-200 px-5 py-4">
-          <label className="flex items-center gap-2 text-sm text-stone-600">
-            Rows
-            <CustomSelect
-              value={String(pageSize)}
-              onValueChange={(value) => setPageSize(Number(value))}
-              options={[
-                { value: "5", label: "5" },
-                { value: "10", label: "10" },
-                { value: "20", label: "20" },
-                { value: "50", label: "50" }
-              ]}
-              buttonClassName="w-[72px] rounded-lg border border-stone-300 bg-white px-2 py-1 text-sm text-stone-800"
-              menuClassName="w-[96px]"
-            />
-          </label>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setPage((prev) => Math.max(1, prev - 1))}
-              disabled={page === 1}
-              className="rounded-full border border-stone-300 px-3 py-1.5 text-sm text-stone-700 disabled:opacity-40"
-            >
-              Prev
-            </button>
-            <p className="text-sm text-stone-700">
-              Page <span className="font-semibold text-stone-900">{page}</span> of{" "}
-              <span className="font-semibold text-stone-900">{totalPages}</span>
-            </p>
-            <button
-              type="button"
-              onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
-              disabled={page >= totalPages}
-              className="rounded-full border border-stone-300 px-3 py-1.5 text-sm text-stone-700 disabled:opacity-40"
-            >
-              Next
-            </button>
-          </div>
-        </div>
+        <AdminPagination
+          page={page}
+          totalPages={totalPages}
+          totalItems={filteredOrders.length}
+          pageSize={PAGE_SIZE}
+          currentCount={pageOrders.length}
+          onPageChange={setPage}
+          itemLabel="orders"
+        />
       </section>
 
       {selectedOrder ? (
         <OrderDetailsModal
           order={selectedOrder}
           saving={savingStatus}
+          shipmentBusy={shipmentBusy}
           statusError={statusError}
           statusMessage={statusMessage}
           onClose={() => setSelectedOrderId(null)}
           onSaveStatus={handleStatusSave}
+          onSyncShipment={handleShipmentSync}
         />
       ) : null}
     </>

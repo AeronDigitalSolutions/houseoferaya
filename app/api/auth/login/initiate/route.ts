@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { signAuthChallengeToken } from "@/lib/auth/jwt";
+import { sendPhoneOtpViaTwilio } from "@/lib/twilio-verify";
+import { generateEmailOtp, hashEmailOtp, sendEmailOtpViaResend } from "@/lib/email-otp";
 import { isValidEmail, isValidPhone, normalizeEmail, normalizePhone } from "@/lib/auth/utils";
 
 export async function POST(request: Request) {
@@ -49,25 +51,37 @@ export async function POST(request: Request) {
       );
     }
 
+    if (user.phone) {
+      await sendPhoneOtpViaTwilio(user.phone);
+    }
+
+    let emailOtpHash: string | undefined;
+    if (!user.phone && user.email) {
+      const otp = generateEmailOtp();
+      emailOtpHash = hashEmailOtp(user.email, otp);
+      await sendEmailOtpViaResend(user.email, otp, "login");
+    }
+
     const challengeToken = signAuthChallengeToken({
       purpose: "login",
       userId: user.id,
       email: user.email || undefined,
-      phone: user.phone || undefined
+      phone: user.phone || undefined,
+      emailOtpHash
     });
 
     return NextResponse.json({
       success: true,
       message: "OTP sent successfully.",
-      challengeToken,
-      otpHint: "Use demo OTP: 112233"
+      challengeToken
     });
   } catch (error) {
     console.error("Auth login initiate error:", error);
+    const message = error instanceof Error ? error.message : "";
     return NextResponse.json(
       {
         success: false,
-        message: "Login service is temporarily unavailable. Please check database configuration."
+        message: message || "Login service is temporarily unavailable. Please check database configuration."
       },
       { status: 500 }
     );

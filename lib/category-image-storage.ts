@@ -1,7 +1,8 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { deletePublicUploadFile, getUploadsSubdirectory } from "@/lib/upload-storage";
 
-const CATEGORY_UPLOADS_ROOT = path.join(process.cwd(), "public", "uploads", "categories");
+const CATEGORY_UPLOADS_ROOT = getUploadsSubdirectory("categories");
 
 const ALLOWED_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/avif"]);
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
@@ -75,11 +76,5 @@ export async function saveCategoryImage({
 
 export async function deleteCategoryImageByUrl(publicUrl: string | null | undefined) {
   if (!publicUrl || !publicUrl.startsWith("/uploads/categories/")) return;
-  const safeFileName = path.basename(publicUrl);
-  const absolutePath = path.join(CATEGORY_UPLOADS_ROOT, safeFileName);
-  try {
-    await fs.unlink(absolutePath);
-  } catch {
-    // Ignore missing files to keep category cleanup safe.
-  }
+  await deletePublicUploadFile(publicUrl);
 }

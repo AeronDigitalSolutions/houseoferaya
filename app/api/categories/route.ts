@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { resolveImageUrlWithFallback } from "@/lib/image-url";
 
 export async function GET() {
   try {
@@ -10,16 +11,20 @@ export async function GET() {
       }
     });
 
-    return Response.json({
-      success: true,
-      items: categories.map((category) => ({
+    const items = await Promise.all(
+      categories.map(async (category) => ({
         id: category.id,
         name: category.name,
         slug: category.slug,
         description: category.description || "",
-        image: category.image || "/assets/collection-aura.jpg",
+        image: await resolveImageUrlWithFallback(category.image),
         productCount: category._count.products
       }))
+    );
+
+    return Response.json({
+      success: true,
+      items
     });
   } catch (error) {
     return Response.json(

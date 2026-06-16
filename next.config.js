@@ -8,7 +8,13 @@ module.exports = (phase) => {
     // Keep dev and build artifacts separate to prevent manifest race conditions.
     distDir: phase === PHASE_DEVELOPMENT_SERVER ? ".next-dev" : ".next",
     images: {
-      formats: ["image/avif", "image/webp"]
+      formats: ["image/avif", "image/webp"],
+      remotePatterns: [
+        {
+          protocol: "https",
+          hostname: "images.unsplash.com"
+        }
+      ]
     },
     async rewrites() {
       if (!backendApiOrigin) {

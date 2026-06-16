@@ -16,6 +16,9 @@ import {
   Upload,
   X
 } from "lucide-react";
+import { AdminPagination } from "@/components/admin/AdminPagination";
+import { HomepageSectionsManager } from "@/components/admin/homepage-media/HomepageSectionsManager";
+import { useBrandDialog } from "@/components/providers/BrandDialogProvider";
 
 type DeviceType = "DESKTOP" | "MOBILE";
 type Message = { type: "success" | "error"; text: string } | null;
@@ -38,6 +41,7 @@ const dimensionNote: Record<DeviceType, string> = {
   DESKTOP: "Desktop banners must follow a 16:9 ratio (landscape).",
   MOBILE: "Mobile banners must follow a 9:16 ratio (portrait)."
 };
+const PAGE_SIZE = 20;
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("en-IN", {
@@ -115,6 +119,7 @@ function DevicePill({
 }
 
 export function HomepageMediaManager() {
+  const { confirm } = useBrandDialog();
   const [banners, setBanners] = useState<HomepageBannerRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -127,6 +132,7 @@ export function HomepageMediaManager() {
   const [uploadFile, setUploadFile] = useState<File | null>(null);
 
   const [selectedBannerId, setSelectedBannerId] = useState<string | null>(null);
+  const [pages, setPages] = useState<Record<DeviceType, number>>({ DESKTOP: 1, MOBILE: 1 });
   const [titleDrafts, setTitleDrafts] = useState<Record<string, string>>({});
   const [replaceFiles, setReplaceFiles] = useState<Record<string, File | null>>({});
 
@@ -144,6 +150,13 @@ export function HomepageMediaManager() {
     () => sortedBanners.filter((item) => item.deviceType === "MOBILE"),
     [sortedBanners]
   );
+
+  useEffect(() => {
+    setPages((prev) => ({
+      DESKTOP: Math.min(prev.DESKTOP, Math.max(1, Math.ceil(desktopBanners.length / PAGE_SIZE))),
+      MOBILE: Math.min(prev.MOBILE, Math.max(1, Math.ceil(mobileBanners.length / PAGE_SIZE)))
+    }));
+  }, [desktopBanners.length, mobileBanners.length]);
 
   const selectedBanner = useMemo(
     () => sortedBanners.find((item) => item.id === selectedBannerId) || null,
@@ -264,8 +277,13 @@ export function HomepageMediaManager() {
     label: string;
     device: DeviceType;
     list: HomepageBannerRecord[];
-  }) => (
-    <section className="card p-5 sm:p-6">
+  }) => {
+    const page = pages[device] || 1;
+    const totalPages = Math.max(1, Math.ceil(list.length / PAGE_SIZE));
+    const pagedList = list.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+    return (
+    <section className="card overflow-hidden p-5 sm:p-6">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 className="font-heading text-xl text-stone-900 sm:text-2xl">{label}</h3>
@@ -292,7 +310,7 @@ export function HomepageMediaManager() {
         </div>
       ) : (
         <div className={`grid gap-4 ${device === "DESKTOP" ? "sm:grid-cols-2" : "sm:grid-cols-2 lg:grid-cols-3"}`}>
-          {list.map((banner) => (
+          {pagedList.map((banner) => (
             <button
               key={banner.id}
               type="button"
@@ -304,7 +322,6 @@ export function HomepageMediaManager() {
                   src={banner.publicUrl}
                   alt={banner.title || banner.fileName}
                   fill
-                  unoptimized
                   className="object-cover transition duration-300 group-hover:scale-[1.02]"
                   sizes="(max-width: 1024px) 100vw, 420px"
                 />
@@ -326,17 +343,33 @@ export function HomepageMediaManager() {
           ))}
         </div>
       )}
+
+      <div className="-mx-5 mt-5 sm:-mx-6">
+        <AdminPagination
+          page={page}
+          totalPages={totalPages}
+          totalItems={list.length}
+          pageSize={PAGE_SIZE}
+          currentCount={pagedList.length}
+          onPageChange={(nextPage) => setPages((prev) => ({ ...prev, [device]: nextPage }))}
+          itemLabel="banners"
+        />
+      </div>
     </section>
   );
+  };
 
   return (
     <div className="space-y-5">
+      <HomepageSectionsManager />
+
       <section className="card p-5 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h2 className="font-heading text-3xl text-stone-900 sm:text-4xl">Homepage Banners & Slider Media</h2>
             <p className="mt-2 max-w-3xl text-sm text-stone-600">
-              Manage desktop and mobile hero banners for the homepage slider. Click any banner to open details and actions.
+              Manage desktop and mobile hero banners for the homepage slider. Homepage sections above control products,
+              categories, signatures, and testimonials shown across the storefront.
             </p>
           </div>
           <button
@@ -443,7 +476,6 @@ export function HomepageMediaManager() {
                   src={selectedBanner.publicUrl}
                   alt={selectedBanner.title || selectedBanner.fileName}
                   fill
-                  unoptimized
                   className="object-cover"
                   sizes="(max-width: 1024px) 100vw, 620px"
                 />
@@ -576,8 +608,15 @@ export function HomepageMediaManager() {
 
                 <button
                   type="button"
-                  onClick={() => {
-                    if (!window.confirm("Delete this banner? This cannot be undone.")) return;
+                  onClick={async () => {
+                    const shouldDelete = await confirm({
+                      title: "Delete Banner",
+                      message: "Delete this banner? This cannot be undone.",
+                      confirmLabel: "Delete Banner",
+                      cancelLabel: "Keep Banner",
+                      tone: "danger"
+                    });
+                    if (!shouldDelete) return;
                     void mutateBanner(selectedBanner.id, async () => {
                       const response = await fetch(`/api/admin/homepage-banners?id=${selectedBanner.id}`, { method: "DELETE" });
                       const payload = (await response.json()) as { success: boolean; message?: string };

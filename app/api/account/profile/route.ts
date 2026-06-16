@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUserFromRequest } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
+import { verifyAuthChallengeToken } from "@/lib/auth/jwt";
 import { parseContactPayload, isValidEmail, isValidPhone, normalizeName } from "@/lib/auth/utils";
 
 export async function GET(request: NextRequest) {
@@ -38,6 +39,8 @@ export async function PUT(request: NextRequest) {
       email: body?.email,
       phone: body?.phone
     });
+    const emailVerificationToken = body?.emailVerificationToken ? String(body.emailVerificationToken) : "";
+    const phoneVerificationToken = body?.phoneVerificationToken ? String(body.phoneVerificationToken) : "";
     const dob = body?.dateOfBirth ? new Date(String(body.dateOfBirth)) : null;
 
     if (!fullName) {
@@ -57,6 +60,48 @@ export async function PUT(request: NextRequest) {
 
     if (dob && Number.isNaN(dob.getTime())) {
       return NextResponse.json({ success: false, message: "Invalid date of birth." }, { status: 400 });
+    }
+
+    const currentUser = await prisma.user.findUnique({
+      where: { id: authUser.id },
+      select: { email: true, phone: true }
+    });
+
+    if (!currentUser) {
+      return NextResponse.json({ success: false, message: "User not found." }, { status: 404 });
+    }
+
+    const emailChanged = (currentUser.email || "") !== (email || "");
+    const phoneChanged = (currentUser.phone || "") !== (phone || "");
+
+    if (emailChanged && email) {
+      const verifiedEmail = verifyAuthChallengeToken(emailVerificationToken);
+      if (
+        !verifiedEmail ||
+        verifiedEmail.purpose !== "profile_contact_verified" ||
+        verifiedEmail.userId !== authUser.id ||
+        verifiedEmail.email !== email
+      ) {
+        return NextResponse.json(
+          { success: false, message: "Please verify your new email before saving profile changes." },
+          { status: 400 }
+        );
+      }
+    }
+
+    if (phoneChanged && phone) {
+      const verifiedPhone = verifyAuthChallengeToken(phoneVerificationToken);
+      if (
+        !verifiedPhone ||
+        verifiedPhone.purpose !== "profile_contact_verified" ||
+        verifiedPhone.userId !== authUser.id ||
+        verifiedPhone.phone !== phone
+      ) {
+        return NextResponse.json(
+          { success: false, message: "Please verify your new phone number before saving profile changes." },
+          { status: 400 }
+        );
+      }
     }
 
     const duplicate = await prisma.user.findFirst({
@@ -102,4 +147,3 @@ export async function PUT(request: NextRequest) {
     );
   }
 }
-

@@ -1,5 +1,6 @@
 import { requireAdminPermission } from "@/lib/auth/admin-guard";
 import { AdminCustomersDirectory } from "@/components/admin/AdminCustomersDirectory";
+import { resolveImageUrlWithFallback } from "@/lib/image-url";
 import { prisma } from "@/lib/prisma";
 
 function formatCurrency(value: number) {
@@ -98,82 +99,87 @@ export default async function AdminCustomersPage() {
     }
   });
 
-  const customers = users.map((user) => {
-    const orders = user.orders
-      .map((order) => ({
-        id: order.id,
-        orderNumber: order.orderNumber,
-        total: Number(order.total),
-        orderStatus: order.orderStatus,
-        paymentStatus: order.paymentStatus,
-        shippingStatus: order.shippingStatus,
-        createdAt: order.createdAt.toISOString(),
-        items: order.items.map((item) => ({
-          id: item.id,
-          productName: item.productName,
-          sku: item.sku,
-          quantity: item.quantity,
-          unitPrice: Number(item.unitPrice),
-          totalPrice: Number(item.totalPrice)
+  const customers = await Promise.all(
+    users.map(async (user) => {
+      const orders = user.orders
+        .map((order) => ({
+          id: order.id,
+          orderNumber: order.orderNumber,
+          total: Number(order.total),
+          orderStatus: order.orderStatus,
+          paymentStatus: order.paymentStatus,
+          shippingStatus: order.shippingStatus,
+          createdAt: order.createdAt.toISOString(),
+          items: order.items.map((item) => ({
+            id: item.id,
+            productName: item.productName,
+            sku: item.sku,
+            quantity: item.quantity,
+            unitPrice: Number(item.unitPrice),
+            totalPrice: Number(item.totalPrice)
+          }))
         }))
-      }))
-      .sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
+        .sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
 
-    const lifetimeValue = orders.reduce((sum, order) => sum + order.total, 0);
+      const lifetimeValue = orders.reduce((sum, order) => sum + order.total, 0);
 
-    const wishlistItems =
-      user.wishlist?.items.map((item) => ({
-        id: item.id,
-        productId: item.product.id,
-        productName: item.product.name,
-        productSlug: item.product.slug,
-        price: Number(item.product.price),
-        metalType: item.product.metalType,
-        gemstone: item.product.gemstone,
-        imageUrl: item.product.images[0]?.url ?? null,
-        addedAt: item.createdAt.toISOString()
-      })) ?? [];
+      const wishlistItems = user.wishlist
+        ? await Promise.all(
+            user.wishlist.items.map(async (item) => ({
+              id: item.id,
+              productId: item.product.id,
+              productName: item.product.name,
+              productSlug: item.product.slug,
+              price: Number(item.product.price),
+              metalType: item.product.metalType,
+              gemstone: item.product.gemstone,
+              imageUrl: await resolveImageUrlWithFallback(item.product.images[0]?.url),
+              addedAt: item.createdAt.toISOString()
+            }))
+          )
+        : [];
 
-    return {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      phone: user.phone,
-      dateOfBirth: user.dateOfBirth ? user.dateOfBirth.toISOString() : null,
-      isActive: user.isActive,
-      createdAt: user.createdAt.toISOString(),
-      updatedAt: user.updatedAt.toISOString(),
-      orderCount: orders.length,
-      lifetimeValue,
-      lastOrderAt: orders[0]?.createdAt ?? null,
-      addressCount: user.addresses.length,
-      hasWishlist: Boolean(user.wishlist),
-      addresses: user.addresses
-        .map((address) => ({
-          id: address.id,
-          nickname: address.nickname,
-          label: address.label,
-          type: address.type,
-          fullName: address.fullName,
-          phone: address.phone,
-          line1: address.line1,
-          line2: address.line2,
-          city: address.city,
-          state: address.state,
-          country: address.country,
-          pincode: address.pincode,
-          isDefault: address.isDefault,
-          createdAt: address.createdAt.toISOString()
-        }))
-        .sort((a, b) => {
-          if (a.isDefault && !b.isDefault) return -1;
-          if (!a.isDefault && b.isDefault) return 1;
-          return +new Date(b.createdAt) - +new Date(a.createdAt);
-        }),
-      orders,
-      wishlistItems
-    };
-  });
+      return {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        dateOfBirth: user.dateOfBirth ? user.dateOfBirth.toISOString() : null,
+        isActive: user.isActive,
+        createdAt: user.createdAt.toISOString(),
+        updatedAt: user.updatedAt.toISOString(),
+        orderCount: orders.length,
+        lifetimeValue,
+        lastOrderAt: orders[0]?.createdAt ?? null,
+        addressCount: user.addresses.length,
+        hasWishlist: Boolean(user.wishlist),
+        addresses: user.addresses
+          .map((address) => ({
+            id: address.id,
+            nickname: address.nickname,
+            label: address.label,
+            type: address.type,
+            fullName: address.fullName,
+            phone: address.phone,
+            line1: address.line1,
+            line2: address.line2,
+            city: address.city,
+            state: address.state,
+            country: address.country,
+            pincode: address.pincode,
+            isDefault: address.isDefault,
+            createdAt: address.createdAt.toISOString()
+          }))
+          .sort((a, b) => {
+            if (a.isDefault && !b.isDefault) return -1;
+            if (!a.isDefault && b.isDefault) return 1;
+            return +new Date(b.createdAt) - +new Date(a.createdAt);
+          }),
+        orders,
+        wishlistItems
+      };
+    })
+  );
 
   const totalCustomers = customers.length;
   const activeCustomers = customers.filter((customer) => customer.isActive).length;

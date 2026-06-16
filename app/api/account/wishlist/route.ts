@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUserFromRequest } from "@/lib/auth/session";
+import { resolveImageUrlWithFallback } from "@/lib/image-url";
 import { prisma } from "@/lib/prisma";
 import { buildProductPricing, productPricingSelect } from "@/lib/product-pricing";
 
@@ -26,18 +27,23 @@ export async function GET(request: NextRequest) {
   const normalized = wishlist
     ? {
         ...wishlist,
-        items: wishlist.items.map((item) => {
-          const pricing = buildProductPricing(item.product);
-          return {
-            ...item,
-            product: {
-              ...item.product,
-              price: pricing.finalPrice,
-              compareAtPrice: pricing.compareAtPrice,
-              pricingBreakdown: pricing
-            }
-          };
-        })
+        items: await Promise.all(
+          wishlist.items.map(async (item) => {
+            const pricing = buildProductPricing(item.product);
+            const resolvedPrimaryImage = await resolveImageUrlWithFallback(item.product.images[0]?.url);
+
+            return {
+              ...item,
+              product: {
+                ...item.product,
+                images: [{ ...item.product.images[0], url: resolvedPrimaryImage }],
+                price: pricing.finalPrice,
+                compareAtPrice: pricing.compareAtPrice,
+                pricingBreakdown: pricing
+              }
+            };
+          })
+        )
       }
     : { id: null, items: [] };
 

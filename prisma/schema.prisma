@@ -1,5 +1,6 @@
 generator client {
   provider = "prisma-client-js"
+  binaryTargets = ["native", "darwin-arm64"]
 }
 
 datasource db {
@@ -64,6 +65,7 @@ enum BannerDeviceType {
 enum BaseMetal {
   GOLD
   SILVER
+  ARTIFICIAL
 }
 
 enum MetalColor {
@@ -71,6 +73,7 @@ enum MetalColor {
   ROSE_GOLD
   WHITE_GOLD
   OXIDISED_SILVER
+  NOT_APPLICABLE
 }
 
 enum PurityType {
@@ -79,6 +82,7 @@ enum PurityType {
   K18
   K14
   S925
+  NOT_APPLICABLE
 }
 
 enum MakingChargeType {
@@ -480,5 +484,31 @@ model HomepageBanner {
   updatedAt        DateTime         @updatedAt
 
   @@index([deviceType, sortOrder])
+  @@index([isActive])
+}
+
+model HomepageContent {
+  id                         String   @id @default(cuid())
+  key                        String   @unique @default("main")
+  heroSection                Json?
+  newArrivalsSection         Json?
+  featuredCollectionsSection Json?
+  bestsellerSection          Json?
+  signatureSection           Json?
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
+}
+
+model HomepageTestimonial {
+  id           String   @id @default(cuid())
+  customerName String
+  quote        String   @db.Text
+  imageUrl      String?
+  sortOrder    Int      @default(0)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([sortOrder, createdAt])
   @@index([isActive])
 }

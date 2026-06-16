@@ -2,9 +2,12 @@ import { notFound } from "next/navigation";
 import { ShieldCheck, Star, Truck } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { formatCurrency } from "@/lib/format";
-import { calculateJewelryPrice, resolveProductMetalRate } from "@/lib/jewelry-pricing";
+import { buildProductPricing } from "@/lib/product-pricing";
 import { ProductImageGallery } from "@/components/product/ProductImageGallery";
 import { ProductPurchaseActions } from "@/components/product/ProductPurchaseActions";
+import { PincodeAvailabilityChecker } from "@/components/shipping/PincodeAvailabilityChecker";
+import { ARTIFICIAL_GST_PERCENTAGE, getStorefrontGemstone, getStorefrontWeight, isArtificialBaseMetal } from "@/lib/product-materials";
+import { isRingCategory } from "@/lib/product-category";
 
 export default async function ProductDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -53,40 +56,32 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
     notFound();
   }
 
-  const metalRate = resolveProductMetalRate({
-    baseMetal: product.baseMetal,
-    activeGoldRate: product.activeGoldRate ? Number(product.activeGoldRate) : null,
-    activeSilverRate: product.activeSilverRate ? Number(product.activeSilverRate) : null,
-    useManualSellingRate: product.useManualSellingRate,
-    manualSellingRate: product.manualSellingRate ? Number(product.manualSellingRate) : null
-  });
-
-  const breakdown = calculateJewelryPrice({
-    baseMetal: product.baseMetal,
-    metalRate,
-    weightGrams: Number(product.weightGrams),
-    purityFactor: Number(product.purityFactor),
-    makingChargeType: product.makingChargeType,
-    makingChargeValue: Number(product.makingChargeValue),
-    stoneCostType: product.stoneCostType,
-    stoneCostValue: Number(product.stoneCostValue),
-    stoneCarat: product.stoneCarat ? Number(product.stoneCarat) : 0,
-    huidCharge: Number(product.huidCharge),
-    gstPercentage: Number(product.gstPercentage)
-  });
-
-  const displayPrice = breakdown.finalPrice > 0 ? breakdown.finalPrice : Number(product.price);
-  const compareAtPrice =
-    product.compareAtPrice ? Number(product.compareAtPrice) : Math.ceil((displayPrice * 1.2) / 500) * 500;
-  const discountPct = Math.max(0, Math.round(((compareAtPrice - displayPrice) / compareAtPrice) * 100));
-  const sizeOptions =
-    product.category?.slug === "necklaces"
-      ? ['Standard Chain (16")', 'Medium Chain (18")', 'Long Chain (20")']
-      : ["US 6 (Standard)", "US 7", "US 8", "US 9"];
+  const isArtificial = isArtificialBaseMetal(product.baseMetal);
+  const breakdown = buildProductPricing({ ...product, images: [] } as never);
+  const displayPrice = breakdown.finalPrice;
+  const compareAtPrice = breakdown.compareAtPrice;
+  const discountPct =
+    compareAtPrice && compareAtPrice > displayPrice
+      ? Math.max(0, Math.round(((compareAtPrice - displayPrice) / compareAtPrice) * 100))
+      : 0;
+  const showSizeSelector = isRingCategory(product.category?.slug, product.category?.name);
+  const sizeOptions = ["US 6 (Standard)", "US 7", "US 8", "US 9"];
   const lengthSpec = product.category?.slug === "necklaces" ? '16" - 18" Adjustable' : "Customizable Fit";
   const galleryImages = product.images.length
     ? product.images.map((image) => image.url)
     : ["/assets/collection-aura.jpg", "/assets/gallery-1.jpg", "/assets/gallery-2.jpg"];
+  const materialSummary = isArtificial
+    ? [
+        { label: "Material", value: "Artificial" },
+        { label: "Certification", value: product.certification || "In-house Certified" },
+        { label: "Collection", value: product.category?.name || "Collection", span: "col-span-2" }
+      ]
+    : [
+        { label: "Material", value: product.metalType },
+        { label: "Weight", value: getStorefrontWeight(product) },
+        { label: "Gemstone", value: getStorefrontGemstone(product) },
+        { label: "Length", value: lengthSpec, span: "col-span-2" }
+      ].filter((item) => Boolean(item.value));
 
   return (
     <div className="grid gap-8 lg:grid-cols-2">
@@ -114,8 +109,8 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 
         <div className="flex flex-wrap items-end gap-x-4 gap-y-1">
           <span className="font-heading text-[32px] leading-none text-[#121212] sm:text-[34px]">{formatCurrency(displayPrice)}</span>
-          <span className="text-[16px] text-[#6e7178] line-through">{formatCurrency(compareAtPrice)}</span>
-          <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#775a19]">{discountPct}% OFF</span>
+          {compareAtPrice ? <span className="text-[16px] text-[#6e7178] line-through">{formatCurrency(compareAtPrice)}</span> : null}
+          {discountPct > 0 ? <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#775a19]">{discountPct}% OFF</span> : null}
         </div>
 
         <p className="max-w-2xl text-[16px] leading-[1.85] tracking-[0.005em] text-[#545b67]">
@@ -124,12 +119,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 
         <div className="rounded-2xl border border-stone-300/70 bg-gradient-to-b from-white/90 to-[#f8f7f5] p-3.5 sm:p-4">
           <div className="grid grid-cols-2 gap-3">
-            {[
-              { label: "Material", value: product.metalType },
-              { label: "Weight", value: product.weight },
-              { label: "Gemstone", value: product.gemstone },
-              { label: "Length", value: lengthSpec, span: "col-span-2" }
-            ].map((item) => (
+            {materialSummary.map((item) => (
               <div
                 key={item.label}
                 className={`rounded-xl border border-stone-200 bg-white/80 px-4 py-3 ${item.span ?? ""}`}
@@ -142,28 +132,49 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
         </div>
 
         <div className="rounded-2xl border border-stone-300/70 bg-white/85 p-4">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#7b8089]">Pricing Breakdown</p>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#7b8089]">
+            {isArtificial ? "Artificial Pricing" : "Pricing Breakdown"}
+          </p>
           <div className="mt-3 space-y-2 text-sm text-[#4e5561]">
-            <div className="flex items-center justify-between">
-              <span>Metal Value</span>
-              <span>{formatCurrency(breakdown.metalPrice)}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span>Making Charges</span>
-              <span>{formatCurrency(breakdown.makingCharge)}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span>Stone Cost</span>
-              <span>{formatCurrency(breakdown.stoneCost)}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span>HUID Charges</span>
-              <span>{formatCurrency(breakdown.huidCharge)}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span>GST ({Number(product.gstPercentage)}%)</span>
-              <span>{formatCurrency(breakdown.gstAmount)}</span>
-            </div>
+            {isArtificial ? (
+              <>
+                <div className="flex items-center justify-between">
+                  <span>MRP</span>
+                  <span>{compareAtPrice ? formatCurrency(compareAtPrice) : "--"}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>Offer Price</span>
+                  <span>{formatCurrency(displayPrice)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>GST ({ARTIFICIAL_GST_PERCENTAGE}%)</span>
+                  <span>{formatCurrency(breakdown.gstAmount)}</span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center justify-between">
+                  <span>Metal Value</span>
+                  <span>{formatCurrency(breakdown.metalPrice)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>Making Charges</span>
+                  <span>{formatCurrency(breakdown.makingCharge)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>Stone Cost</span>
+                  <span>{formatCurrency(breakdown.stoneCost)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>HUID Charges</span>
+                  <span>{formatCurrency(breakdown.huidCharge)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>GST ({Number(product.gstPercentage)}%)</span>
+                  <span>{formatCurrency(breakdown.gstAmount)}</span>
+                </div>
+              </>
+            )}
             <div className="border-t border-stone-200 pt-2 text-base font-semibold text-[#16181c]">
               <div className="flex items-center justify-between">
                 <span>Final Price</span>
@@ -173,7 +184,14 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
           </div>
         </div>
 
-        <ProductPurchaseActions productSlug={product.slug} productName={product.name} sizeOptions={sizeOptions} />
+        <PincodeAvailabilityChecker />
+
+        <ProductPurchaseActions
+          productSlug={product.slug}
+          productName={product.name}
+          sizeOptions={sizeOptions}
+          showSizeSelector={showSizeSelector}
+        />
 
         <div className="grid grid-cols-2 gap-4 pt-4 text-[11px] font-medium text-[#666d78]">
           <div className="flex items-center gap-2">

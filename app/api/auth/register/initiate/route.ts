@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { signAuthChallengeToken } from "@/lib/auth/jwt";
+import { sendPhoneOtpViaTwilio } from "@/lib/twilio-verify";
+import { generateEmailOtp, hashEmailOtp, sendEmailOtpViaResend } from "@/lib/email-otp";
 import { parseContactPayload, isValidEmail, isValidPhone, normalizeEmail, normalizeName, normalizePhone } from "@/lib/auth/utils";
 
 export async function POST(request: Request) {
@@ -61,25 +63,37 @@ export async function POST(request: Request) {
       );
     }
 
+    if (phone) {
+      await sendPhoneOtpViaTwilio(phone);
+    }
+
+    let emailOtpHash: string | undefined;
+    if (email) {
+      const otp = generateEmailOtp();
+      emailOtpHash = hashEmailOtp(email, otp);
+      await sendEmailOtpViaResend(email, otp, "register");
+    }
+
     const challengeToken = signAuthChallengeToken({
       purpose: "register",
       fullName,
       email,
-      phone
+      phone,
+      emailOtpHash
     });
 
     return NextResponse.json({
       success: true,
       message: "OTP sent successfully.",
-      challengeToken,
-      otpHint: "Use demo OTP: 112233"
+      challengeToken
     });
   } catch (error) {
     console.error("Auth register initiate error:", error);
+    const message = error instanceof Error ? error.message : "";
     return NextResponse.json(
       {
         success: false,
-        message: "Signup service is temporarily unavailable. Please check database configuration."
+        message: message || "Signup service is temporarily unavailable. Please check database configuration."
       },
       { status: 500 }
     );

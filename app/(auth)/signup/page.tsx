@@ -7,6 +7,7 @@ import { FormEvent, useEffect, useState } from "react";
 export default function SignupPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const nextPath = searchParams.get("next") || "";
   const [fullName, setFullName] = useState("");
   const [contact, setContact] = useState("");
   const [otp, setOtp] = useState("");
@@ -55,7 +56,7 @@ export default function SignupPage() {
         return;
       }
       setChallengeToken(data.challengeToken);
-      setMessage(`${data.message} ${data.otpHint || ""}`.trim());
+      setMessage(data.message || "OTP sent successfully.");
     } catch {
       setError("Unable to start registration. Please try again.");
     } finally {
@@ -76,7 +77,8 @@ export default function SignupPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           otp,
-          challengeToken
+          challengeToken,
+          next: nextPath || undefined
         })
       });
       const data = await res.json();
@@ -104,7 +106,7 @@ export default function SignupPage() {
       <div className="space-y-2 text-center">
         <p className="text-xs uppercase tracking-[0.24em] text-royal-700/60">Create Your Account</p>
         <h1 className="font-heading text-4xl text-royal-800">Signup</h1>
-        <p className="text-sm text-royal-700/70">Full name + one contact detail required. Demo OTP is 112233.</p>
+        <p className="text-sm text-royal-700/70">Full name + one contact detail required. Phone OTP is sent live by SMS.</p>
       </div>
 
       <div className="rounded-3xl border border-black/10 bg-white/70 p-5 shadow-soft backdrop-blur-sm sm:p-6">
@@ -182,7 +184,10 @@ export default function SignupPage() {
 
         <p className="mt-4 text-center text-sm text-royal-700/70">
           Already registered?{" "}
-          <Link href="/login" className="font-medium text-royal-800 underline underline-offset-4">
+          <Link
+            href={nextPath ? `/login?next=${encodeURIComponent(nextPath)}` : "/login"}
+            className="font-medium text-royal-800 underline underline-offset-4"
+          >
             Login
           </Link>
         </p>

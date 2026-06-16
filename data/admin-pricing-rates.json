@@ -1,0 +1,39 @@
+{
+  "updatedAt": "2026-05-28T12:08:19.028Z",
+  "rates": [
+    {
+      "id": "gold",
+      "name": "Gold",
+      "sellingRate": 13528.1,
+      "liveMarketRate": 13528.1,
+      "liveFetchedAt": "2026-05-28T12:07:54Z",
+      "liveSource": "gold-api.com",
+      "dayStartRate": 9500,
+      "unit": "₹ / gram",
+      "status": "UNLOCKED",
+      "lastUpdated": "2026-05-28T12:08:19.026Z",
+      "lockedRate": null,
+      "lockedFrom": null,
+      "lockedUntil": null,
+      "lockedBy": null,
+      "lockDuration": null
+    },
+    {
+      "id": "silver",
+      "name": "Silver",
+      "sellingRate": 225.2,
+      "liveMarketRate": 225.2,
+      "liveFetchedAt": "2026-05-28T12:07:54Z",
+      "liveSource": "gold-api.com",
+      "dayStartRate": 105,
+      "unit": "₹ / gram",
+      "status": "UNLOCKED",
+      "lastUpdated": "2026-05-28T12:08:19.026Z",
+      "lockedRate": null,
+      "lockedFrom": null,
+      "lockedUntil": null,
+      "lockedBy": null,
+      "lockDuration": null
+    }
+  ]
+}

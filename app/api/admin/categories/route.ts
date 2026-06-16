@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminAuthFromRequest } from "@/lib/auth/admin-session";
 import { saveCategoryImage } from "@/lib/category-image-storage";
+import { resolveImageUrlWithFallback } from "@/lib/image-url";
 
 export const runtime = "nodejs";
 
@@ -19,7 +20,7 @@ function isAllowed(admin: Awaited<ReturnType<typeof getAdminAuthFromRequest>>) {
   return Boolean(admin && admin.isActive && (admin.role === "SUPER_ADMIN" || admin.permissions.canEditProducts));
 }
 
-function mapCategory(item: {
+async function mapCategory(item: {
   id: string;
   name: string;
   slug: string;
@@ -35,7 +36,7 @@ function mapCategory(item: {
     name: item.name,
     slug: item.slug,
     description: item.description,
-    image: item.image || "/assets/collection-aura.jpg",
+    image: await resolveImageUrlWithFallback(item.image),
     isActive: item.isActive,
     productCount: item._count?.products ?? 0,
     createdAt: item.createdAt.toISOString(),
@@ -57,9 +58,11 @@ export async function GET(request: NextRequest) {
       }
     });
 
+    const mapped = await Promise.all(categories.map((item) => mapCategory(item)));
+
     return NextResponse.json({
       success: true,
-      categories: categories.map(mapCategory)
+      categories: mapped
     });
   } catch (error) {
     return NextResponse.json(
@@ -130,7 +133,7 @@ export async function POST(request: NextRequest) {
       {
         success: true,
         message: "Category created successfully.",
-        category: mapCategory(category)
+        category: await mapCategory(category)
       },
       { status: 201 }
     );

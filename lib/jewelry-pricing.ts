@@ -1,12 +1,15 @@
+import { type ProductBaseMetal } from "@/lib/product-materials";
+
 export const PURITY_FACTOR_MAP = {
   K24: 1,
   K22: 0.916,
   K18: 0.75,
   K14: 0.585,
-  S925: 0.925
+  S925: 0.925,
+  NOT_APPLICABLE: 0
 } as const;
 
-export type BaseMetalValue = "GOLD" | "SILVER";
+export type BaseMetalValue = ProductBaseMetal;
 export type MakingChargeTypeValue = "PER_GRAM" | "FIXED" | "PERCENTAGE";
 export type StoneCostTypeValue = "FIXED" | "PER_CARAT";
 
@@ -95,6 +98,9 @@ type RateSelectionInput = {
 };
 
 export function resolveProductMetalRate(input: RateSelectionInput) {
+  if (input.baseMetal === "ARTIFICIAL") {
+    return 0;
+  }
   const marketRate = input.baseMetal === "GOLD" ? input.activeGoldRate : input.activeSilverRate;
   if (input.useManualSellingRate && input.manualSellingRate && input.manualSellingRate > 0) {
     return input.manualSellingRate;

@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { deleteHomepageBannerImageByUrl, saveHomepageBannerImage, type HomepageBannerDevice } from "@/lib/homepage-banner-storage";
@@ -135,6 +136,8 @@ export async function POST(request: NextRequest) {
       }
     });
 
+    revalidatePath("/");
+
     return NextResponse.json(
       {
         success: true,
@@ -193,6 +196,7 @@ export async function PATCH(request: NextRequest) {
         where: { id },
         data: { isActive: Boolean(payload.isActive), updatedByAdminId: admin?.id }
       });
+      revalidatePath("/");
       return NextResponse.json({ success: true, banner: mapBanner(updated), message: "Banner status updated." });
     }
 
@@ -202,6 +206,7 @@ export async function PATCH(request: NextRequest) {
         where: { id },
         data: { title: nextTitle || null, updatedByAdminId: admin?.id }
       });
+      revalidatePath("/");
       return NextResponse.json({ success: true, banner: mapBanner(updated), message: "Banner title updated." });
     }
 
@@ -240,6 +245,7 @@ export async function PATCH(request: NextRequest) {
         orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }]
       });
 
+      revalidatePath("/");
       return NextResponse.json({
         success: true,
         message: "Banner order updated.",
@@ -318,6 +324,8 @@ export async function PUT(request: NextRequest) {
       }
     }
 
+    revalidatePath("/");
+
     return NextResponse.json({
       success: true,
       message: "Banner replaced successfully.",
@@ -366,6 +374,8 @@ export async function DELETE(request: NextRequest) {
     } catch {
       // Ignore cleanup errors so delete is still successful.
     }
+
+    revalidatePath("/");
 
     return NextResponse.json({ success: true, message: "Banner deleted successfully." });
   } catch (error) {

@@ -1,8 +1,25 @@
 import Link from "next/link";
+import { PaymentStatus } from "@prisma/client";
 import { notFound, redirect } from "next/navigation";
 import { StatusBadge } from "@/components/StatusBadge";
 import { getAuthUserFromCookies } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
+
+function getPaymentMessage(status: PaymentStatus) {
+  if (status === PaymentStatus.PAID) {
+    return "Payment received successfully. Your order is confirmed and moving into preparation.";
+  }
+  if (status === PaymentStatus.AUTHORIZED) {
+    return "Payment is authorized and awaiting final settlement confirmation.";
+  }
+  if (status === PaymentStatus.FAILED) {
+    return "Payment did not go through. If money was debited, it should reverse automatically as per your bank timeline.";
+  }
+  if (status === PaymentStatus.REFUNDED) {
+    return "This payment has been refunded. You can review the order details and support notes from your account.";
+  }
+  return "Your order has been created and payment confirmation is still pending.";
+}
 
 export default async function OrderConfirmationPage({ params }: { params: Promise<{ orderId: string }> }) {
   const user = await getAuthUserFromCookies();
@@ -44,7 +61,7 @@ export default async function OrderConfirmationPage({ params }: { params: Promis
           <StatusBadge status={order.paymentStatus} />
         </div>
         <p className="text-sm text-stone-600">Estimated Delivery: {estimatedDelivery.toLocaleDateString("en-IN")}</p>
-        <p className="text-sm text-stone-600">Placeholder success/failure message based on payment webhook status.</p>
+        <p className="text-sm text-stone-600">{getPaymentMessage(order.paymentStatus)}</p>
 
         <div className="flex flex-wrap gap-3">
           <Link href={`/track-order/${order.id}`} className="rounded-full bg-stone-900 px-5 py-2 text-sm text-white">

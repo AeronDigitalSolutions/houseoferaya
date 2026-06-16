@@ -1,8 +1,10 @@
 import { CheckoutForm } from "@/components/CheckoutForm";
 import { OrderSummary } from "@/components/OrderSummary";
+import { SafeImage } from "@/components/ui/SafeImage";
 import { redirect } from "next/navigation";
 import { Crown } from "lucide-react";
 import { getAuthUserFromCookies } from "@/lib/auth/session";
+import { resolveImageUrlWithFallback } from "@/lib/image-url";
 import { prisma } from "@/lib/prisma";
 import { buildProductPricing, productPricingSelect } from "@/lib/product-pricing";
 import { isSignatureProductSlug } from "@/lib/signature-piece";
@@ -34,26 +36,29 @@ export default async function CheckoutPage() {
       return sum + pricing.finalPrice * line.quantity;
     }, 0) ?? 0;
   const shippingCharge = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : 199;
-  const checkoutItems =
-    cart?.items.map((line) => {
-      const pricing = buildProductPricing(line.product);
-      const isSignature = isSignatureProductSlug(line.product.slug);
-      return {
-        id: line.id,
-        quantity: line.quantity,
-        name: line.product.name,
-        slug: line.product.slug,
-        image: line.product.images[0]?.url || "/assets/collection-aura.jpg",
-        isSignature,
-        lineTotal: pricing.finalPrice * line.quantity
-      };
-    }) ?? [];
+  const checkoutItems = cart
+    ? await Promise.all(
+        cart.items.map(async (line) => {
+          const pricing = buildProductPricing(line.product);
+          const isSignature = isSignatureProductSlug(line.product.slug);
+          return {
+            id: line.id,
+            quantity: line.quantity,
+            name: line.product.name,
+            slug: line.product.slug,
+            image: await resolveImageUrlWithFallback(line.product.images[0]?.url),
+            isSignature,
+            lineTotal: pricing.finalPrice * line.quantity
+          };
+        })
+      )
+    : [];
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
       <section className="space-y-4">
         <h1 className="font-heading text-3xl sm:text-4xl text-stone-900">Quick Checkout</h1>
-        <CheckoutForm />
+        <CheckoutForm initialName={user.name} initialEmail={user.email} initialPhone={user.phone} />
         <section className="card space-y-3 p-4 sm:p-5">
           <h3 className="font-heading text-xl text-stone-900">Items in Checkout</h3>
           <div className="space-y-2">
@@ -66,7 +71,7 @@ export default async function CheckoutPage() {
                     : "border-black/10 bg-white"
                 }`}
               >
-                <img src={item.image} alt={item.name} className="h-14 w-14 rounded-xl object-cover" />
+                <SafeImage src={item.image} alt={item.name} className="h-14 w-14 rounded-xl object-cover" />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <p className={`truncate text-sm font-medium ${item.isSignature ? "text-[#f6ecda]" : "text-stone-900"}`}>

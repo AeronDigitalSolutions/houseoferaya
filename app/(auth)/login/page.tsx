@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useState } from "react";
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const nextPath = searchParams.get("next") || "";
   const [identifier, setIdentifier] = useState("");
   const [otp, setOtp] = useState("");
   const [challengeToken, setChallengeToken] = useState<string | null>(null);
@@ -29,9 +31,10 @@ export default function LoginPage() {
         if (data?.code === "USER_NOT_FOUND") {
           const trimmed = identifier.trim();
           const isEmail = trimmed.includes("@");
+          const nextQuery = nextPath ? `&next=${encodeURIComponent(nextPath)}` : "";
           const target = isEmail
-            ? `/signup?email=${encodeURIComponent(trimmed)}`
-            : `/signup?phone=${encodeURIComponent(trimmed)}`;
+            ? `/signup?email=${encodeURIComponent(trimmed)}${nextQuery}`
+            : `/signup?phone=${encodeURIComponent(trimmed)}${nextQuery}`;
           router.push(target);
           return;
         }
@@ -39,7 +42,7 @@ export default function LoginPage() {
         return;
       }
       setChallengeToken(data.challengeToken);
-      setMessage(`${data.message} ${data.otpHint || ""}`.trim());
+      setMessage(data.message || "OTP sent successfully.");
     } catch {
       setError("Unable to start login. Please try again.");
     } finally {
@@ -58,7 +61,7 @@ export default function LoginPage() {
       const res = await fetch("/api/auth/login/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ otp, challengeToken })
+        body: JSON.stringify({ otp, challengeToken, next: nextPath || undefined })
       });
       const data = await res.json();
       if (!res.ok) {
@@ -80,7 +83,7 @@ export default function LoginPage() {
       <div className="space-y-2 text-center">
         <p className="text-xs uppercase tracking-[0.24em] text-royal-700/60">Welcome Back</p>
         <h1 className="font-heading text-4xl text-royal-800">Login</h1>
-        <p className="text-sm text-royal-700/70">Use your email or mobile number. Demo OTP is 112233.</p>
+        <p className="text-sm text-royal-700/70">Use your email or mobile number. Phone OTP is sent live by SMS.</p>
       </div>
 
       <div className="rounded-3xl border border-black/10 bg-white/70 p-5 shadow-soft backdrop-blur-sm sm:p-6">

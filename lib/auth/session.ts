@@ -13,17 +13,38 @@ type SessionUser = {
   role: UserRole;
 };
 
-function buildCookieOptions() {
+function shouldUseSecureCookies(request?: Request) {
+  if (process.env.NODE_ENV !== "production") {
+    return false;
+  }
+
+  if (!request) {
+    return true;
+  }
+
+  const forwardedProto = request.headers.get("x-forwarded-proto");
+  if (forwardedProto) {
+    return forwardedProto.split(",")[0].trim() === "https";
+  }
+
+  try {
+    return new URL(request.url).protocol === "https:";
+  } catch {
+    return true;
+  }
+}
+
+function buildCookieOptions(request?: Request) {
   return {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: shouldUseSecureCookies(request),
     sameSite: "lax" as const,
     path: "/",
     maxAge: AUTH_TOKEN_EXPIRY_SECONDS
   };
 }
 
-export function attachSessionCookie(response: NextResponse, user: SessionUser) {
+export function attachSessionCookie(response: NextResponse, request: Request, user: SessionUser) {
   const token = signSessionToken({
     sub: user.id,
     role: user.role,
@@ -31,12 +52,12 @@ export function attachSessionCookie(response: NextResponse, user: SessionUser) {
     phone: user.phone || undefined
   });
 
-  response.cookies.set(AUTH_COOKIE_NAME, token, buildCookieOptions());
+  response.cookies.set(AUTH_COOKIE_NAME, token, buildCookieOptions(request));
 }
 
-export function clearSessionCookie(response: NextResponse) {
+export function clearSessionCookie(response: NextResponse, request?: Request) {
   response.cookies.set(AUTH_COOKIE_NAME, "", {
-    ...buildCookieOptions(),
+    ...buildCookieOptions(request),
     maxAge: 0
   });
 }
@@ -88,4 +109,3 @@ export async function getAuthUserFromCookies() {
     }
   });
 }
-

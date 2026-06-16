@@ -6,6 +6,7 @@ import { Crown, FolderPlus, Heart, Trash2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { EmptyState } from "@/components/EmptyState";
 import { CustomSelect } from "@/components/ui/CustomSelect";
+import { SafeImage } from "@/components/ui/SafeImage";
 import { formatCurrency } from "@/lib/format";
 import { isSignatureProductSlug } from "@/lib/signature-piece";
 
@@ -235,7 +236,7 @@ export function WishlistContent() {
                 </button>
 
                     <Link href={productHref} className="block aspect-square overflow-hidden bg-stone-100">
-                  <img
+                  <SafeImage
                     src={product.image}
                     alt={product.name}
                     className="h-full w-full object-cover transition duration-500 group-hover:scale-105"

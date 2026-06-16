@@ -2,10 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ClipboardList, Diamond, Heart, IndianRupee, LayoutDashboard, ShoppingBag, Sparkles, UserRound, Users } from "lucide-react";
+import { ClipboardList, Crown, Diamond, Heart, IndianRupee, LayoutDashboard, ShoppingBag, UserRound, Users } from "lucide-react";
 import { useEffect, useState } from "react";
-
-const gold = "#9C7346";
 
 const storeSideItems = [
   {
@@ -73,6 +71,7 @@ export function MobileBottomNav() {
   const [isAdminSessionActive, setIsAdminSessionActive] = useState(false);
   const hideOnAuthPages = pathname === "/login" || pathname === "/signup";
   const isAdminRoute = pathname.startsWith("/admin");
+  const isSignatureTheme = pathname.startsWith("/signature-pieces");
 
   useEffect(() => {
     let isMounted = true;
@@ -119,10 +118,16 @@ export function MobileBottomNav() {
   }
 
   const showAdminBar = isAdminRoute && isAdminSessionActive;
-  const inactiveClass = "text-[#4b4138] drop-shadow-[0_1px_1px_rgba(255,255,255,0.46)]";
-  const activeClass = "text-[#9c7346] drop-shadow-[0_1px_2px_rgba(255,244,226,0.85)]";
+  const inactiveClass = isSignatureTheme
+    ? "text-[#d8c7a3] drop-shadow-[0_1px_1px_rgba(7,11,34,0.5)]"
+    : "text-[#4b4138] drop-shadow-[0_1px_1px_rgba(255,255,255,0.46)]";
+  const activeClass = isSignatureTheme
+    ? "text-[#f3e5c6] drop-shadow-[0_1px_2px_rgba(7,11,34,0.6)]"
+    : "text-[#9c7346] drop-shadow-[0_1px_2px_rgba(255,244,226,0.85)]";
   const adminInactiveClass = "text-[#6f6458]";
   const adminActiveClass = "text-[#12100e]";
+  const mobileExploreHref = "/signature-pieces";
+  const mobileExploreLabel = "Explore Signature";
 
   return (
     <>
@@ -153,17 +158,28 @@ export function MobileBottomNav() {
             </div>
           </div>
         ) : (
-          <div className="relative mx-auto max-w-md rounded-t-[1.6rem] rounded-b-[1.3rem] border border-[#e8dece] bg-[#f8f3eb]/94 px-3 pb-2 pt-3 shadow-[0_-12px_28px_rgba(59,43,27,0.18)] backdrop-blur-2xl backdrop-saturate-125">
-            <div className="pointer-events-none absolute inset-0 rounded-t-[1.6rem] rounded-b-[1.3rem] bg-gradient-to-b from-[#fff8ef]/75 to-[#f3eade]/66" />
+          <div
+            className={`relative mx-auto max-w-md rounded-t-[1.6rem] rounded-b-[1.3rem] px-3 pb-2 pt-3 backdrop-blur-2xl backdrop-saturate-125 ${
+              isSignatureTheme
+                ? "border border-[#31457f] bg-[#0f1e4b]/94 shadow-[0_-12px_28px_rgba(3,8,24,0.38)]"
+                : "border border-[#e8dece] bg-[#f8f3eb]/94 shadow-[0_-12px_28px_rgba(59,43,27,0.18)]"
+            }`}
+          >
+            <div
+              className={`pointer-events-none absolute inset-0 rounded-t-[1.6rem] rounded-b-[1.3rem] ${
+                isSignatureTheme
+                  ? "bg-gradient-to-b from-[#182b66]/82 to-[#0d183e]/76"
+                  : "bg-gradient-to-b from-[#fff8ef]/75 to-[#f3eade]/66"
+              }`}
+            />
 
             <Link
-              href="/explore"
-              aria-label="Explore"
-              className="absolute -top-7 left-1/2 inline-flex h-14 w-14 -translate-x-1/2 items-center justify-center rounded-full border border-[#d9c0a1] bg-gradient-to-b from-[#fff3df] to-[#f3e0c4] shadow-[0_8px_24px_rgba(176,138,90,0.38)] transition duration-200 hover:scale-105 active:scale-95"
-              style={{ color: gold }}
+              href={mobileExploreHref}
+              aria-label={mobileExploreLabel}
+              className="absolute -top-7 left-1/2 inline-flex h-14 w-14 -translate-x-1/2 items-center justify-center rounded-full border border-[#5470bf] bg-gradient-to-b from-[#25479d] to-[#122b7a] text-[#f3d38a] shadow-[0_10px_28px_rgba(4,12,38,0.45)] transition duration-200 hover:scale-105 active:scale-95"
             >
-              <Sparkles size={22} strokeWidth={2.2} />
-              <span className="sr-only">Explore</span>
+              <Crown size={22} strokeWidth={2.2} />
+              <span className="sr-only">{mobileExploreLabel}</span>
             </Link>
 
             <div className="relative grid grid-cols-5 items-end gap-1">
@@ -186,13 +202,14 @@ export function MobileBottomNav() {
                 );
               })}
 
-              <div className="flex flex-col items-center justify-end gap-1 pb-0.5">
+              <div className="flex min-h-[56px] flex-col items-center justify-end gap-1 rounded-xl py-1">
                 <span
-                  className={`text-[10px] font-semibold tracking-[0.1em] ${
-                    pathname.startsWith("/explore") ? activeClass : inactiveClass
+                  className={`flex w-[92px] flex-col items-center justify-center text-center text-[10px] font-semibold tracking-[0.1em] leading-[1.05] ${
+                    pathname.startsWith("/signature-pieces") ? activeClass : inactiveClass
                   }`}
                 >
-                  Explore
+                  <span>Explore</span>
+                  <span>Signature</span>
                 </span>
               </div>
 

@@ -1,6 +1,19 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getVersionedBannerUrl } from "@/lib/homepage-banner-storage";
+import { publicUploadFileExists } from "@/lib/upload-storage";
+
+const DESKTOP_FALLBACK_BANNERS = [
+  "/assets/banner/banner%201.png",
+  "/assets/banner/banner%202.png",
+  "/assets/banner/banner%203.png"
+];
+
+const MOBILE_FALLBACK_BANNERS = [
+  "/assets/banner/banner%20m1.png",
+  "/assets/banner/banner%20m2.png",
+  "/assets/banner/banner%20m3.png"
+];
 
 function mapBanner(banner: {
   id: string;
@@ -27,6 +40,27 @@ function isKnownPrismaTableError(error: unknown) {
   );
 }
 
+async function mapBannerWithResilientUrl(
+  banner: {
+    id: string;
+    title: string | null;
+    publicUrl: string;
+    sortOrder: number;
+    updatedAt: Date;
+  },
+  fallbackSet: string[]
+) {
+  if (await publicUploadFileExists(banner.publicUrl)) {
+    return mapBanner(banner);
+  }
+
+  const fallbackUrl = fallbackSet[banner.sortOrder] ?? fallbackSet[0];
+  return {
+    ...mapBanner(banner),
+    publicUrl: fallbackUrl
+  };
+}
+
 export async function GET() {
   try {
     // TODO: move to cache + edge strategy when homepage media is finalized.
@@ -43,10 +77,15 @@ export async function GET() {
       })
     ]);
 
+    const [safeDesktop, safeMobile] = await Promise.all([
+      Promise.all(desktop.map((banner) => mapBannerWithResilientUrl(banner, DESKTOP_FALLBACK_BANNERS))),
+      Promise.all(mobile.map((banner) => mapBannerWithResilientUrl(banner, MOBILE_FALLBACK_BANNERS)))
+    ]);
+
     return NextResponse.json({
       success: true,
-      desktop: desktop.map(mapBanner),
-      mobile: mobile.map(mapBanner)
+      desktop: safeDesktop,
+      mobile: safeMobile
     });
   } catch (error) {
     if (isKnownPrismaTableError(error)) {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminAuthFromRequest } from "@/lib/auth/admin-session";
 import { deleteCategoryImageByUrl, saveCategoryImage } from "@/lib/category-image-storage";
+import { resolveImageUrlWithFallback } from "@/lib/image-url";
 
 export const runtime = "nodejs";
 
@@ -15,7 +16,7 @@ function slugify(value: string) {
     .replace(/^-|-$/g, "");
 }
 
-function mapCategory(item: {
+async function mapCategory(item: {
   id: string;
   name: string;
   slug: string;
@@ -31,7 +32,7 @@ function mapCategory(item: {
     name: item.name,
     slug: item.slug,
     description: item.description,
-    image: item.image || "/assets/collection-aura.jpg",
+    image: await resolveImageUrlWithFallback(item.image),
     isActive: item.isActive,
     productCount: item._count?.products ?? 0,
     createdAt: item.createdAt.toISOString(),
@@ -143,7 +144,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     return NextResponse.json({
       success: true,
       message: "Category updated successfully.",
-      category: mapCategory(updated)
+      category: await mapCategory(updated)
     });
   } catch (error) {
     return NextResponse.json(

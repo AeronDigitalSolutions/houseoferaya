@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { BrandDialogProvider } from "@/components/providers/BrandDialogProvider";
 import { MobileBottomNav } from "@/components/mobile/MobileBottomNav";
 import "./globals.css";
 
@@ -15,8 +16,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body suppressHydrationWarning className="bg-[#f7f3ee] font-body text-[#2a2927] antialiased">
-        {children}
-        <MobileBottomNav />
+        <BrandDialogProvider>
+          {children}
+          <MobileBottomNav />
+        </BrandDialogProvider>
       </body>
     </html>
   );

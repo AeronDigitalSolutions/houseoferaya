@@ -1,6 +1,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { imageSize } from "image-size";
+import { deletePublicUploadFile, getUploadsSubdirectory } from "@/lib/upload-storage";
 
 export type HomepageBannerDevice = "DESKTOP" | "MOBILE";
 
@@ -11,7 +12,7 @@ type ExpectedDimensions = {
   orientation: "landscape" | "portrait";
 };
 
-const BANNERS_ROOT = path.join(process.cwd(), "public", "uploads", "homepage-banners");
+const BANNERS_ROOT = getUploadsSubdirectory("homepage-banners");
 
 const ALLOWED_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/avif"]);
 const MAX_IMAGE_BYTES = 12 * 1024 * 1024;
@@ -137,10 +138,7 @@ export async function saveHomepageBannerImage({
 }
 
 export async function deleteHomepageBannerImageByUrl(publicUrl: string) {
-  const safePath = publicUrl.replace(/^\/+/, "");
-  if (!safePath.startsWith("uploads/homepage-banners/")) return;
-  const absolutePath = path.join(process.cwd(), "public", safePath);
-  await fs.unlink(absolutePath);
+  await deletePublicUploadFile(publicUrl);
 }
 
 export function getVersionedBannerUrl(publicUrl: string, updatedAt: Date | string) {

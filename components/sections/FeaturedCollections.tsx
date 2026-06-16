@@ -1,51 +1,88 @@
 "use client";
 
 import { motion } from "framer-motion";
-import Image from "next/image";
+import Link from "next/link";
+import { ArrowUpRight, Sparkles } from "lucide-react";
 import { SectionHeading } from "@/components/ui/SectionHeading";
+import { SafeImage } from "@/components/ui/SafeImage";
 import { revealUp, staggerWrap } from "@/lib/animations";
 import { collections } from "@/lib/data";
+import type { Category } from "@/lib/types";
 
-export function FeaturedCollections() {
+type FeaturedCollectionsProps = {
+  heading?: string;
+  description?: string;
+  categories?: Category[];
+};
+
+export function FeaturedCollections({
+  heading = "Featured Collections",
+  description = "A restrained mix of sculptural earrings, rings, and drops designed for lasting relevance.",
+  categories: selectedCategories
+}: FeaturedCollectionsProps) {
+  const displayCategories =
+    selectedCategories && selectedCategories.length > 0
+      ? selectedCategories
+      : collections.map((collection, index) => ({
+          id: `fallback-${index}`,
+          name: collection.name,
+          slug: collection.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+          description: collection.description,
+          image: collection.image
+        }));
   return (
-    <section className="px-5 py-16 sm:px-8 sm:py-20 lg:px-12 md:py-24">
+    <section className="px-5 py-16 sm:px-8 sm:py-20 md:py-24 lg:px-12">
       <div className="mx-auto w-full max-w-7xl">
-        <SectionHeading
-          eyebrow="Curated Edit"
-          title="Featured Collections"
-          description="A restrained mix of sculptural earrings, rings, and drops designed for lasting relevance."
-        />
+        <div className="relative overflow-hidden rounded-[2rem] border border-[#dcc7a0]/60 bg-[linear-gradient(165deg,#f9f4ea_0%,#f4ede0_35%,#efe6d6_100%)] px-5 py-8 shadow-[0_26px_70px_rgba(80,56,26,0.14)] sm:px-8 sm:py-10 lg:px-10 lg:py-12">
+          <div className="pointer-events-none absolute -left-20 top-1/2 h-56 w-56 -translate-y-1/2 rounded-full bg-[#ffffffaa] blur-3xl" />
+          <div className="pointer-events-none absolute -right-14 top-0 h-44 w-44 rounded-full bg-[#f3dfbe] blur-3xl" />
 
-        <motion.div
-          variants={staggerWrap}
-          initial={false}
-          whileInView="visible"
-          viewport={{ once: true, amount: 0.2 }}
-          className="mt-8 grid gap-4 sm:mt-10 sm:grid-cols-2 lg:grid-cols-3"
-        >
-          {collections.map((collection) => (
-            <motion.article
-              key={collection.name}
-              variants={revealUp}
-              className="group overflow-hidden rounded-[1.5rem] border border-black/10 bg-white/45 shadow-luxe"
+          <div className="relative">
+            <SectionHeading eyebrow="Curated Edit" title={heading} description={description} />
+
+            <motion.div
+              variants={staggerWrap}
+              initial={false}
+              whileInView="visible"
+              viewport={{ once: true, amount: 0.2 }}
+              className="mt-8 grid gap-4 sm:mt-10 sm:grid-cols-2 lg:grid-cols-3"
             >
-              <div className="relative overflow-hidden">
-                <Image
-                  src={collection.image}
-                  alt={collection.name}
-                  width={1000}
-                  height={1200}
-                  className="h-[18rem] w-full object-cover transition duration-700 group-hover:scale-105 sm:h-[24rem]"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent" />
-              </div>
-              <div className="p-5 sm:p-6">
-                <h3 className="font-heading text-[1.85rem] leading-none text-royal-800">{collection.name}</h3>
-                <p className="mt-2 text-sm text-royal-700/75">{collection.description}</p>
-              </div>
-            </motion.article>
-          ))}
-        </motion.div>
+              {displayCategories.map((category) => (
+                <motion.article key={category.id} variants={revealUp}>
+                  <Link
+                    href={`/collections/${category.slug}`}
+                    className="group block overflow-hidden rounded-[1.6rem] border border-[#d8c5a0]/65 bg-[#f7f1e6] shadow-[0_12px_36px_rgba(86,64,34,0.14)] transition duration-500 hover:-translate-y-1.5 hover:shadow-[0_20px_46px_rgba(68,47,20,0.18)]"
+                  >
+                    <div className="relative aspect-[4/3] overflow-hidden">
+                      <SafeImage
+                        src={category.image}
+                        fallbackSrc={null}
+                        showMissingPlaceholder
+                        alt={category.name}
+                        className="h-full w-full object-cover transition duration-700 group-hover:scale-[1.06]"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-black/10 to-transparent opacity-95" />
+                      <div className="absolute right-3 top-3 inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/45 bg-black/35 text-white/90 backdrop-blur">
+                        <ArrowUpRight size={15} />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2 px-4 pb-4 pt-3">
+                      <div className="inline-flex items-center gap-1.5 rounded-full border border-[#d4be96] bg-[#fff8ec] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#8e6a35]">
+                        <Sparkles size={11} />
+                        Collection
+                      </div>
+                      <h3 className="font-heading text-[1.65rem] leading-none text-[#1a1a1a]">{category.name}</h3>
+                      <p className="text-sm leading-relaxed text-[#5f5a53]">
+                        {category.description || "Handpicked pieces curated for modern heirloom dressing."}
+                      </p>
+                    </div>
+                  </Link>
+                </motion.article>
+              ))}
+            </motion.div>
+          </div>
+        </div>
       </div>
     </section>
   );

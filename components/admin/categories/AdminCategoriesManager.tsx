@@ -1,7 +1,10 @@
 "use client";
 
-import { ChangeEvent, FormEvent, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import { ImagePlus, PencilLine, Plus, Save, Trash2 } from "lucide-react";
+import { AdminPagination } from "@/components/admin/AdminPagination";
+import { useBrandDialog } from "@/components/providers/BrandDialogProvider";
+import { SafeImage } from "@/components/ui/SafeImage";
 
 type CategoryItem = {
   id: string;
@@ -20,6 +23,8 @@ type Props = {
   canEdit: boolean;
 };
 
+const PAGE_SIZE = 20;
+
 function toSlug(value: string) {
   return value
     .toLowerCase()
@@ -31,7 +36,9 @@ function toSlug(value: string) {
 }
 
 export function AdminCategoriesManager({ initialCategories, canEdit }: Props) {
+  const { confirm } = useBrandDialog();
   const [categories, setCategories] = useState<CategoryItem[]>(initialCategories);
+  const [page, setPage] = useState(1);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isBusy, setIsBusy] = useState(false);
@@ -49,6 +56,18 @@ export function AdminCategoriesManager({ initialCategories, canEdit }: Props) {
     () => categories.find((item) => item.id === selectedId) || null,
     [categories, selectedId]
   );
+
+  const totalPages = Math.max(1, Math.ceil(categories.length / PAGE_SIZE));
+  const pageCategories = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return categories.slice(start, start + PAGE_SIZE);
+  }, [categories, page]);
+
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
 
   const [editState, setEditState] = useState({
     name: "",
@@ -100,6 +119,7 @@ export function AdminCategoriesManager({ initialCategories, canEdit }: Props) {
         return;
       }
       setCategories((prev) => [payload.category!, ...prev]);
+      setPage(1);
       setCreateState({ name: "", slug: "", description: "", imageFile: null });
       setIsCreateOpen(false);
       setMessage(payload.message || "Category created.");
@@ -146,7 +166,14 @@ export function AdminCategoriesManager({ initialCategories, canEdit }: Props) {
 
   const handleDelete = async () => {
     if (!canEdit || !selected) return;
-    if (!window.confirm(`Delete category "${selected.name}"?`)) return;
+    const shouldDelete = await confirm({
+      title: "Delete Category",
+      message: `Delete category "${selected.name}"?`,
+      confirmLabel: "Delete Category",
+      cancelLabel: "Keep Category",
+      tone: "danger"
+    });
+    if (!shouldDelete) return;
     setError("");
     setMessage("");
     setIsBusy(true);
@@ -192,24 +219,24 @@ export function AdminCategoriesManager({ initialCategories, canEdit }: Props) {
       {message ? <p className="text-sm text-emerald-700">{message}</p> : null}
       {error ? <p className="text-sm text-rose-600">{error}</p> : null}
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {categories.map((category) => (
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5">
+        {pageCategories.map((category) => (
           <button
             type="button"
             key={category.id}
             onClick={() => openEdit(category)}
             className="card group overflow-hidden text-left transition hover:border-stone-300"
           >
-            <div className="aspect-square overflow-hidden rounded-t-2xl bg-stone-100">
-              <img
+            <div className="aspect-[4/3] overflow-hidden rounded-t-2xl bg-stone-100">
+              <SafeImage
                 src={category.image}
                 alt={category.name}
                 className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
               />
             </div>
-            <div className="space-y-1 p-4">
+            <div className="space-y-1 p-3.5">
               <div className="flex items-center justify-between gap-2">
-                <p className="font-heading text-lg text-stone-900">{category.name}</p>
+                <p className="font-heading text-base text-stone-900">{category.name}</p>
                 <span
                   className={`rounded-full px-2.5 py-1 text-[10px] uppercase tracking-[0.14em] ${
                     category.isActive ? "bg-emerald-100 text-emerald-800" : "bg-stone-200 text-stone-600"
@@ -219,12 +246,26 @@ export function AdminCategoriesManager({ initialCategories, canEdit }: Props) {
                 </span>
               </div>
               <p className="text-xs uppercase tracking-[0.14em] text-stone-500">/{category.slug}</p>
-              <p className="text-sm text-stone-600 line-clamp-2">{category.description || "No description"}</p>
+              <p className="text-xs text-stone-600 line-clamp-2">{category.description || "No description"}</p>
               <p className="text-xs text-stone-500">{category.productCount} linked products</p>
             </div>
           </button>
         ))}
       </section>
+
+      {categories.length > PAGE_SIZE ? (
+        <section className="card overflow-hidden p-0">
+          <AdminPagination
+            page={page}
+            totalPages={totalPages}
+            totalItems={categories.length}
+            pageSize={PAGE_SIZE}
+            currentCount={pageCategories.length}
+            onPageChange={setPage}
+            itemLabel="categories"
+          />
+        </section>
+      ) : null}
 
       {isCreateOpen ? (
         <div className="fixed inset-0 z-50 bg-black/45 p-4 backdrop-blur-sm" onClick={() => setIsCreateOpen(false)}>
@@ -324,7 +365,7 @@ export function AdminCategoriesManager({ initialCategories, canEdit }: Props) {
             <form className="grid gap-4 md:grid-cols-[220px_1fr]" onSubmit={handleUpdate}>
               <div className="space-y-3">
                 <div className="aspect-square overflow-hidden rounded-2xl border border-black/10 bg-white">
-                  <img src={selected.image} alt={selected.name} className="h-full w-full object-cover" />
+                  <SafeImage src={selected.image} alt={selected.name} className="h-full w-full object-cover" />
                 </div>
                 <label className="block">
                   <span className="mb-1 block text-xs uppercase tracking-[0.18em] text-stone-500">Replace Image</span>

@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowRight, ChevronDown, SlidersHorizontal, X } from "lucide
 import { AnimatePresence, motion } from "framer-motion";
 import { ProductGrid } from "@/components/ProductGrid";
 import { CustomSelect } from "@/components/ui/CustomSelect";
+import { SafeImage } from "@/components/ui/SafeImage";
 import type { Category, Product } from "@/lib/types";
 
 const sortOptions = [
@@ -19,6 +20,11 @@ type Props = {
   products: Product[];
   initialCategoryId?: string;
 };
+
+const toSelectOptions = (values: Array<string | null | undefined>) =>
+  values
+    .filter((value): value is string => Boolean(value))
+    .map((value) => ({ value, label: value }));
 
 export function CollectionsPageClient({ categories, products, initialCategoryId }: Props) {
   const desktopRailRef = useRef<HTMLDivElement>(null);
@@ -235,7 +241,7 @@ export function CollectionsPageClient({ categories, products, initialCategoryId 
         <CustomSelect
           value={selectedGemstone}
           onValueChange={setSelectedGemstone}
-          options={gemstones.map((gemstone) => ({ value: gemstone, label: gemstone }))}
+          options={toSelectOptions(gemstones)}
           buttonClassName="w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-sm text-royal-800"
           menuClassName="w-full"
         />
@@ -246,7 +252,7 @@ export function CollectionsPageClient({ categories, products, initialCategoryId 
         <CustomSelect
           value={selectedCertification}
           onValueChange={setSelectedCertification}
-          options={certifications.map((certification) => ({ value: certification, label: certification }))}
+          options={toSelectOptions(certifications)}
           buttonClassName="w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-sm text-royal-800"
           menuClassName="w-full"
         />
@@ -337,7 +343,13 @@ export function CollectionsPageClient({ categories, products, initialCategoryId 
                     : "border-black/10 group-hover:border-[#9c7346]/55"
                 }`}
               >
-                <img src={category.image} alt={category.name} className="h-full w-full object-cover" />
+                <SafeImage
+                  src={category.image}
+                  fallbackSrc={null}
+                  showMissingPlaceholder
+                  alt={category.name}
+                  className="h-full w-full object-cover"
+                />
               </div>
               <p className="mt-2 text-center text-xs uppercase tracking-[0.16em] text-royal-700/75">{category.name}</p>
             </button>
@@ -427,7 +439,13 @@ export function CollectionsPageClient({ categories, products, initialCategoryId 
                         : "border-black/10 group-hover:border-[#9c7346]/55"
                     }`}
                   >
-                    <img src={category.image} alt={category.name} className="h-full w-full object-cover" />
+                    <SafeImage
+                      src={category.image}
+                      fallbackSrc={null}
+                      showMissingPlaceholder
+                      alt={category.name}
+                      className="h-full w-full object-cover"
+                    />
                   </div>
                   <p className="mt-1.5 text-center text-[10px] uppercase tracking-[0.16em] text-royal-700/75">
                     {category.name}

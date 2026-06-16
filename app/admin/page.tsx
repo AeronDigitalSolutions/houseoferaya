@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Boxes, ClipboardList, GalleryVerticalEnd, Images, IndianRupee, PackageSearch, ShieldCheck, Truck, Users, Wallet } from "lucide-react";
+import { Boxes, ClipboardList, GalleryVerticalEnd, Images, IndianRupee, MessageSquare, PackageSearch, ShieldCheck, Truck, Users, Wallet } from "lucide-react";
 import { requireAdminPermission } from "@/lib/auth/admin-guard";
 
 const quickLinks = [
@@ -8,6 +8,7 @@ const quickLinks = [
   { href: "/admin/orders", label: "Orders", Icon: ClipboardList, key: "canViewOrders" as const },
   { href: "/admin/shipments", label: "Shipments", Icon: Truck, key: "canViewShipments" as const },
   { href: "/admin/payments", label: "Payments", Icon: Wallet, key: "canViewPayments" as const },
+  { href: "/admin/twilio", label: "Twilio", Icon: MessageSquare, key: "canViewPayments" as const },
   { href: "/admin/pricing-updates", label: "Pricing Updates", Icon: IndianRupee, key: "canViewPricing" as const },
   { href: "/admin/homepage-media", label: "Homepage Media", Icon: Images, key: "canManageHomepageMedia" as const },
   { href: "/admin/customers", label: "Customers", Icon: Users, key: "canViewCustomers" as const },

@@ -8,9 +8,9 @@ export type Product = {
   sku: string;
   stock: number;
   metalType: string;
-  gemstone: string;
-  weight: string;
-  certification: string;
+  gemstone?: string | null;
+  weight?: string | null;
+  certification?: string | null;
   categoryId: string;
   image: string;
   isActive: boolean;

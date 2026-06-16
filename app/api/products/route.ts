@@ -1,3 +1,5 @@
+import { resolveImageUrlWithFallback } from "@/lib/image-url";
+import { getStorefrontGemstone, getStorefrontWeight } from "@/lib/product-materials";
 import { prisma } from "@/lib/prisma";
 import { buildProductPricing, productPricingSelect } from "@/lib/product-pricing";
 
@@ -8,9 +10,8 @@ export async function GET() {
     select: productPricingSelect
   });
 
-  return Response.json({
-    success: true,
-    items: products.map((product) => {
+  const items = await Promise.all(
+    products.map(async (product) => {
       const pricing = buildProductPricing(product);
       return {
         id: product.id,
@@ -21,11 +22,11 @@ export async function GET() {
         stock: product.stock,
         isActive: product.isActive,
         metalType: product.metalType,
-        gemstone: product.gemstone,
-        weight: product.weight,
+        gemstone: getStorefrontGemstone(product),
+        weight: getStorefrontWeight(product),
         certification: product.certification,
         categoryId: product.categoryId,
-        image: product.images[0]?.url || "/assets/collection-aura.jpg",
+        image: await resolveImageUrlWithFallback(product.images[0]?.url, null),
         baseMetal: product.baseMetal,
         metalColor: product.metalColor,
         purity: product.purity,
@@ -35,5 +36,10 @@ export async function GET() {
         pricingBreakdown: pricing
       };
     })
+  );
+
+  return Response.json({
+    success: true,
+    items
   });
 }

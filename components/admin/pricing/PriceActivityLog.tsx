@@ -1,15 +1,35 @@
+ "use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { AdminPagination } from "@/components/admin/AdminPagination";
 import type { ActivityLogItem } from "@/components/admin/pricing/types";
 import { formatCurrency, formatDateTime } from "@/components/admin/pricing/utils";
 
+const PAGE_SIZE = 20;
+
 export function PriceActivityLog({ logs }: { logs: ActivityLogItem[] }) {
+  const [page, setPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(logs.length / PAGE_SIZE));
+
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
+
+  const pageLogs = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return logs.slice(start, start + PAGE_SIZE);
+  }, [logs, page]);
+
   return (
-    <section className="card rounded-3xl">
+    <section className="card overflow-hidden rounded-3xl">
       <div className="border-b border-stone-200 px-5 py-4 sm:px-6">
         <h3 className="font-heading text-2xl text-stone-900">Price History / Activity Logs</h3>
       </div>
 
       <div className="space-y-3 p-4 sm:hidden">
-        {logs.map((log) => {
+        {pageLogs.map((log) => {
           const isUp = log.changeAmount > 0;
           const isDown = log.changeAmount < 0;
           return (
@@ -65,7 +85,7 @@ export function PriceActivityLog({ logs }: { logs: ActivityLogItem[] }) {
             </tr>
           </thead>
           <tbody>
-            {logs.map((log) => {
+            {pageLogs.map((log) => {
               const isUp = log.changeAmount > 0;
               const isDown = log.changeAmount < 0;
               return (
@@ -99,6 +119,16 @@ export function PriceActivityLog({ logs }: { logs: ActivityLogItem[] }) {
           </tbody>
         </table>
       </div>
+
+      <AdminPagination
+        page={page}
+        totalPages={totalPages}
+        totalItems={logs.length}
+        pageSize={PAGE_SIZE}
+        currentCount={pageLogs.length}
+        onPageChange={setPage}
+        itemLabel="activity logs"
+      />
     </section>
   );
 }

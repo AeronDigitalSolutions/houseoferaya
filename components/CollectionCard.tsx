@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SafeImage } from "@/components/ui/SafeImage";
 import type { Category } from "@/lib/types";
 
 export function CollectionCard({ category }: { category: Category }) {
@@ -8,8 +9,10 @@ export function CollectionCard({ category }: { category: Category }) {
       className="group card overflow-hidden transition hover:-translate-y-1 hover:shadow-md"
     >
       <div className="aspect-[4/3] w-full overflow-hidden bg-stone-100">
-        <img
+        <SafeImage
           src={category.image}
+          fallbackSrc={null}
+          showMissingPlaceholder
           alt={category.name}
           className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
         />

@@ -1,3 +1,5 @@
+import { resolveImageUrlWithFallback } from "@/lib/image-url";
+import { getStorefrontGemstone, getStorefrontWeight } from "@/lib/product-materials";
 import { prisma } from "@/lib/prisma";
 import { buildProductPricing, productPricingSelect } from "@/lib/product-pricing";
 
@@ -13,6 +15,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ slug: stri
   }
 
   const pricing = buildProductPricing(product);
+  const image = await resolveImageUrlWithFallback(product.images[0]?.url);
 
   return Response.json({
     success: true,
@@ -25,11 +28,11 @@ export async function GET(_: Request, { params }: { params: Promise<{ slug: stri
       stock: product.stock,
       isActive: product.isActive,
       metalType: product.metalType,
-      gemstone: product.gemstone,
-      weight: product.weight,
+      gemstone: getStorefrontGemstone(product),
+      weight: getStorefrontWeight(product),
       certification: product.certification,
       categoryId: product.categoryId,
-      image: product.images[0]?.url || "/assets/collection-aura.jpg",
+      image,
       baseMetal: product.baseMetal,
       metalColor: product.metalColor,
       purity: product.purity,

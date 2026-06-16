@@ -9,11 +9,12 @@ type SessionTokenPayload = {
 };
 
 type AuthChallengePayload = {
-  purpose: "register" | "login";
+  purpose: "register" | "login" | "profile_contact_update" | "profile_contact_verified";
   fullName?: string;
   email?: string;
   phone?: string;
   userId?: string;
+  emailOtpHash?: string;
 };
 
 function getJwtSecret() {

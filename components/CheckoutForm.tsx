@@ -1,8 +1,7 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from "react";
-import { CheckCircle2, MapPin, Plus, ShieldCheck, X } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { CheckCircle2, Loader2, MapPin, Plus, ShieldCheck, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { CustomSelect } from "@/components/ui/CustomSelect";
 
@@ -39,7 +38,45 @@ const emptyAddressForm: AddressFormState = {
 
 const addressTags: Array<AddressTag | "All"> = ["All", "Home", "Work", "Gift", "Other"];
 
-export function CheckoutForm() {
+declare global {
+  interface Window {
+    Razorpay?: new (options: Record<string, unknown>) => {
+      open: () => void;
+      on: (event: string, handler: (response: any) => void) => void;
+    };
+  }
+}
+
+type CheckoutFormProps = {
+  initialName?: string | null;
+  initialEmail?: string | null;
+  initialPhone?: string | null;
+};
+
+function loadRazorpayScript() {
+  return new Promise<boolean>((resolve) => {
+    if (window.Razorpay) {
+      resolve(true);
+      return;
+    }
+
+    const existing = document.querySelector<HTMLScriptElement>('script[src="https://checkout.razorpay.com/v1/checkout.js"]');
+    if (existing) {
+      existing.addEventListener("load", () => resolve(true), { once: true });
+      existing.addEventListener("error", () => resolve(false), { once: true });
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.async = true;
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+}
+
+export function CheckoutForm({ initialName, initialEmail, initialPhone }: CheckoutFormProps) {
   const router = useRouter();
   const [addresses, setAddresses] = useState<CheckoutAddress[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState("");
@@ -49,8 +86,15 @@ export function CheckoutForm() {
   const [addressForm, setAddressForm] = useState<AddressFormState>(emptyAddressForm);
   const [loadingAddressBook, setLoadingAddressBook] = useState(true);
   const [placingOrder, setPlacingOrder] = useState(false);
+  const [razorpayReady, setRazorpayReady] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pincodeLookupLoading, setPincodeLookupLoading] = useState(false);
+  const [pincodeLookupNotice, setPincodeLookupNotice] = useState<string | null>(null);
+  const [pincodeLookupError, setPincodeLookupError] = useState<string | null>(null);
+  const [customerName, setCustomerName] = useState(initialName || "");
+  const [customerEmail, setCustomerEmail] = useState(initialEmail || "");
+  const [customerPhone, setCustomerPhone] = useState(initialPhone || "");
 
   const filteredAddresses = useMemo(
     () => (activeTag === "All" ? addresses : addresses.filter((address) => address.tag === activeTag)),
@@ -105,14 +149,82 @@ export function CheckoutForm() {
     void loadAddresses();
   }, []);
 
+  useEffect(() => {
+    void (async () => {
+      const loaded = await loadRazorpayScript();
+      setRazorpayReady(loaded);
+    })();
+  }, []);
+
   const onAddressFieldChange = (field: keyof AddressFormState, value: string) => {
     setAddressForm((prev) => ({ ...prev, [field]: value }));
+    if (field === "pincode") {
+      setPincodeLookupNotice(null);
+      setPincodeLookupError(null);
+    }
   };
 
   const closeAddressModal = () => {
     setIsAddressModalOpen(false);
     setAddressForm(emptyAddressForm);
+    setPincodeLookupNotice(null);
+    setPincodeLookupError(null);
   };
+
+  useEffect(() => {
+    if (!isAddressModalOpen) return;
+
+    const normalizedPincode = addressForm.pincode.replace(/\D/g, "").slice(0, 6);
+    if (normalizedPincode !== addressForm.pincode) {
+      setAddressForm((prev) => ({ ...prev, pincode: normalizedPincode }));
+      return;
+    }
+
+    if (normalizedPincode.length !== 6) {
+      setPincodeLookupLoading(false);
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      void (async () => {
+        setPincodeLookupLoading(true);
+        setPincodeLookupError(null);
+        try {
+          const response = await fetch("/api/shipping/check-pincode", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ pincode: normalizedPincode })
+          });
+          const data = await response.json();
+
+          if (!response.ok || !data?.success || !data?.isServiceable) {
+            setPincodeLookupNotice(null);
+            setPincodeLookupError(data?.message || "This pincode is not serviceable for secure shipping.");
+            return;
+          }
+
+          setAddressForm((prev) => ({
+            ...prev,
+            city: String(data?.data?.city || prev.city || "").trim(),
+            state: String(data?.data?.state || prev.state || "").trim(),
+            country: prev.country || "India"
+          }));
+          setPincodeLookupNotice(
+            [data?.data?.city, data?.data?.state].filter(Boolean).length
+              ? `Delivery available in ${[data?.data?.city, data?.data?.state].filter(Boolean).join(", ")}.`
+              : "Delivery available for this pincode."
+          );
+        } catch {
+          setPincodeLookupNotice(null);
+          setPincodeLookupError("Unable to verify pincode right now.");
+        } finally {
+          setPincodeLookupLoading(false);
+        }
+      })();
+    }, 350);
+
+    return () => window.clearTimeout(timeout);
+  }, [addressForm.pincode, isAddressModalOpen]);
 
   const saveAddress = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -120,6 +232,22 @@ export function CheckoutForm() {
     void (async () => {
       setError(null);
       try {
+        const shippingCheckRes = await fetch("/api/shipping/check-pincode", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pincode: addressForm.pincode })
+        });
+        const shippingCheckData = await shippingCheckRes.json();
+
+        if (!shippingCheckRes.ok || !shippingCheckData?.success || !shippingCheckData?.isServiceable) {
+          setError(shippingCheckData?.message || "This pincode is not serviceable for secure shipping.");
+          return;
+        }
+
+        const resolvedCity = String(shippingCheckData?.data?.city || addressForm.city || "").trim();
+        const resolvedState = String(shippingCheckData?.data?.state || addressForm.state || "").trim();
+        const resolvedCountry = String(addressForm.country || "India").trim();
+
         const res = await fetch("/api/account/addresses", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -131,10 +259,10 @@ export function CheckoutForm() {
             phone: addressForm.phone,
             line1: addressForm.line1,
             line2: addressForm.line2,
-            city: addressForm.city,
-            state: addressForm.state,
+            city: resolvedCity,
+            state: resolvedState,
             pincode: addressForm.pincode,
-            country: addressForm.country,
+            country: resolvedCountry,
             isDefault: addresses.length === 0
           })
         });
@@ -162,18 +290,25 @@ export function CheckoutForm() {
       return;
     }
 
+    if (!razorpayReady || !window.Razorpay) {
+      setError("Razorpay checkout is still loading. Please try again in a moment.");
+      return;
+    }
+
     setPlacingOrder(true);
     setError(null);
     setNotice(null);
+    let handedOffToRazorpay = false;
+
     try {
-      const res = await fetch("/api/checkout/create-order", {
+      const res = await fetch("/api/payment/razorpay/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ addressId: selectedAddressId })
       });
       const data = await res.json();
 
-      if (res.status === 401) {
+      if (res.status === 401 && data?.code === "AUTH_REQUIRED") {
         router.push("/login?next=/checkout");
         return;
       }
@@ -182,15 +317,95 @@ export function CheckoutForm() {
         return;
       }
 
-      setNotice(data?.message || "Order placed successfully.");
-      const orderId = data?.order?.id;
-      if (orderId) {
-        router.push(`/order-confirmation/${orderId}`);
+      const key = data?.razorpayKeyId;
+      if (!key) {
+        setError("Razorpay key is missing from server configuration.");
+        return;
       }
+      const razorpay = new window.Razorpay({
+        key,
+        amount: data.amount,
+        currency: data.currency,
+        name: "House of Eraya",
+        description: "Secure Jewelry Checkout",
+        order_id: data.razorpayOrderId,
+        prefill: {
+          name: customerName || selectedAddress?.fullName || "",
+          email: customerEmail || "",
+          contact: customerPhone || selectedAddress?.phone || ""
+        },
+        notes: {
+          localOrderNumber: data.orderNumber
+        },
+        theme: {
+          color: "#9c7346"
+        },
+        modal: {
+          ondismiss: () => {
+            setNotice("Payment window closed. Your order is still pending until payment completes.");
+            setPlacingOrder(false);
+          }
+        },
+        handler: async (response: {
+          razorpay_payment_id: string;
+          razorpay_order_id: string;
+          razorpay_signature: string;
+        }) => {
+          try {
+            const verifyRes = await fetch("/api/payment/razorpay/verify", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                orderId: data.orderId,
+                ...response
+              })
+            });
+            const verifyData = await verifyRes.json();
+
+            if (verifyRes.status === 401 && verifyData?.code === "AUTH_REQUIRED") {
+              router.push("/login?next=/checkout");
+              return;
+            }
+
+            if (!verifyRes.ok || !verifyData?.success) {
+              setError(verifyData?.message || "Payment verification failed.");
+              return;
+            }
+
+            setNotice("Payment verified successfully.");
+            router.push(`/order-confirmation/${data.orderId}`);
+          } catch {
+            setError("Payment verification failed.");
+          } finally {
+            setPlacingOrder(false);
+          }
+        }
+      });
+
+      razorpay.on("payment.failed", (response: any) => {
+        const message =
+          response?.error?.description || response?.error?.reason || "Payment failed. Please try again.";
+        if (
+          typeof message === "string" &&
+          message.toLowerCase().includes("international cards are not supported")
+        ) {
+          setError(
+            "Card was blocked by gateway settings. In test mode, please use UPI test flow (success@razorpay)."
+          );
+        } else {
+          setError(message);
+        }
+        setPlacingOrder(false);
+      });
+
+      handedOffToRazorpay = true;
+      razorpay.open();
     } catch {
       setError("Unable to place order.");
     } finally {
-      setPlacingOrder(false);
+      if (!handedOffToRazorpay) {
+        setPlacingOrder(false);
+      }
     }
   };
 
@@ -208,11 +423,12 @@ export function CheckoutForm() {
 
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="space-y-1.5">
-            <span className="text-xs uppercase tracking-[0.16em] text-royal-700/60">Email</span>
+            <span className="text-xs uppercase tracking-[0.16em] text-royal-700/60">Full Name</span>
             <input
               className="w-full rounded-xl border border-black/12 bg-white px-3 py-2.5 text-sm text-royal-800 outline-none placeholder:text-royal-700/35"
-              placeholder="you@example.com"
-              defaultValue="official.houseoferayya@gmail.com"
+              placeholder="Your full name"
+              value={customerName}
+              onChange={(event) => setCustomerName(event.target.value)}
             />
           </label>
 
@@ -221,7 +437,18 @@ export function CheckoutForm() {
             <input
               className="w-full rounded-xl border border-black/12 bg-white px-3 py-2.5 text-sm text-royal-800 outline-none placeholder:text-royal-700/35"
               placeholder="+91-XXXXXXXXXX"
-              defaultValue="+91-7889072256"
+              value={customerPhone}
+              onChange={(event) => setCustomerPhone(event.target.value)}
+            />
+          </label>
+
+          <label className="space-y-1.5 sm:col-span-2">
+            <span className="text-xs uppercase tracking-[0.16em] text-royal-700/60">Email</span>
+            <input
+              className="w-full rounded-xl border border-black/12 bg-white px-3 py-2.5 text-sm text-royal-800 outline-none placeholder:text-royal-700/35"
+              placeholder="you@example.com"
+              value={customerEmail}
+              onChange={(event) => setCustomerEmail(event.target.value)}
             />
           </label>
         </div>
@@ -333,7 +560,14 @@ export function CheckoutForm() {
           disabled={placingOrder || !selectedAddress}
           className="w-full rounded-full bg-royal-800 px-5 py-3 text-sm font-medium tracking-[0.14em] text-white disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {placingOrder ? "Placing Order..." : "Place Order (Razorpay-ready placeholder)"}
+          {placingOrder ? (
+            <span className="inline-flex items-center gap-2">
+              <Loader2 size={16} className="animate-spin" />
+              Opening Razorpay...
+            </span>
+          ) : (
+            "Pay Securely with Razorpay"
+          )}
         </button>
 
         {notice ? <p className="text-sm text-emerald-700">{notice}</p> : null}
@@ -341,7 +575,7 @@ export function CheckoutForm() {
 
         <div className="flex items-center gap-2 text-xs text-royal-700/65">
           <ShieldCheck size={14} className="text-[#9c7346]" />
-          <p>Secure checkout placeholder. Connect Razorpay order + verify APIs during integration.</p>
+          <p>Razorpay secure checkout opens in a verified payment window and confirms your order instantly.</p>
         </div>
       </section>
 
@@ -449,9 +683,11 @@ export function CheckoutForm() {
                 <input
                   required
                   value={addressForm.pincode}
-                  onChange={(event) => onAddressFieldChange("pincode", event.target.value)}
+                  onChange={(event) => onAddressFieldChange("pincode", event.target.value.replace(/\D/g, "").slice(0, 6))}
                   className="rounded-xl border border-black/15 bg-white px-3 py-3 text-sm text-royal-800 outline-none placeholder:text-royal-700/40 focus:border-[#9c7346]/55"
                   placeholder="Pincode"
+                  inputMode="numeric"
+                  maxLength={6}
                 />
 
                 <input
@@ -462,6 +698,10 @@ export function CheckoutForm() {
                   placeholder="Country"
                 />
               </div>
+
+              {pincodeLookupLoading ? <p className="text-sm text-royal-700/70">Checking pincode serviceability...</p> : null}
+              {pincodeLookupNotice ? <p className="text-sm text-emerald-700">{pincodeLookupNotice}</p> : null}
+              {pincodeLookupError ? <p className="text-sm text-rose-700">{pincodeLookupError}</p> : null}
 
               <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end">
                 <button

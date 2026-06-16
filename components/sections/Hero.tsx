@@ -2,9 +2,25 @@
 
 import { motion } from "framer-motion";
 import Image from "next/image";
+import Link from "next/link";
 import { TactileButton } from "@/components/ui/TactileButton";
+import type { Product } from "@/lib/types";
+import { isSignatureProductSlug } from "@/lib/signature-piece";
 
-export function Hero() {
+type HeroProps = {
+  product?: Product | null;
+  badgeLabel?: string;
+  description?: string;
+};
+
+export function Hero({ product = null, badgeLabel = "New Capsule", description = "Engineered curves with warm golden tonality." }: HeroProps) {
+  const productName = product?.name || "Aureline 06";
+  const productImage = product?.image || "/assets/hero-earrings.jpg";
+  const productHref = product
+    ? isSignatureProductSlug(product.slug)
+      ? `/signature-pieces/${product.slug}`
+      : `/products/${product.slug}`
+    : "/collections";
   return (
     <section className="relative overflow-hidden bg-eraya-texture px-5 pb-16 pt-28 sm:px-8 sm:pb-20 sm:pt-32 lg:px-12 md:pt-36">
       <div className="absolute inset-0 opacity-40 [background:radial-gradient(circle_at_80%_15%,rgba(255,255,255,0.68),transparent_40%),radial-gradient(circle_at_20%_85%,rgba(36,34,31,0.1),transparent_46%)]" />
@@ -38,20 +54,23 @@ export function Hero() {
         >
           <div className="relative overflow-hidden rounded-[2rem] border border-white/70 bg-white/35 p-2 shadow-soft sm:rounded-[2.3rem]">
             <Image
-              src="/assets/hero-earrings.jpg"
-              alt="House of Eraya hero piece"
+              src={productImage}
+              alt={productName}
               width={1200}
               height={1500}
               className="h-[24rem] w-full rounded-[1.6rem] object-cover object-center sm:h-[32rem]"
+              quality={70}
               priority
             />
           </div>
           <div className="absolute -bottom-5 -left-1 w-[74%] overflow-hidden rounded-2xl border border-white/80 bg-[#f7f3ee]/86 p-4 shadow-luxe ring-1 ring-black/10 backdrop-blur-md sm:-left-4 sm:w-[62%]">
             <div className="absolute inset-0 bg-gradient-to-br from-[#faf6ef]/96 via-[#f4eee7]/93 to-[#ebe2d7]/90" />
             <div className="relative">
-              <p className="text-[10px] uppercase tracking-[0.24em] text-[#685744]">New Capsule</p>
-              <p className="mt-1 font-heading text-2xl leading-none text-[#1e1c19] sm:text-[1.8rem]">Aureline 06</p>
-              <p className="mt-2 text-xs text-[#3d3832] sm:text-sm">Engineered curves with warm gold tonality.</p>
+              <p className="text-[10px] uppercase tracking-[0.24em] text-[#685744]">{badgeLabel}</p>
+              <Link href={productHref} className="mt-1 block font-heading text-2xl leading-none text-[#1e1c19] transition hover:text-[#6f5331] sm:text-[1.8rem]">
+                {productName}
+              </Link>
+              <p className="mt-2 text-xs text-[#3d3832] sm:text-sm">{description}</p>
             </div>
           </div>
         </motion.div>

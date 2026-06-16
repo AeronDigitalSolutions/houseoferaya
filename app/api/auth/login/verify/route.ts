@@ -1,14 +1,24 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { OTP_FALLBACK_CODE } from "@/lib/auth/constants";
 import { verifyAuthChallengeToken } from "@/lib/auth/jwt";
 import { attachSessionCookie } from "@/lib/auth/session";
+import { hashEmailOtp } from "@/lib/email-otp";
+import { verifyPhoneOtpViaTwilio } from "@/lib/twilio-verify";
+
+function sanitizeNextPath(value: unknown) {
+  const nextPath = String(value || "").trim();
+  if (!nextPath || !nextPath.startsWith("/") || nextPath.startsWith("//")) {
+    return "/account/profile";
+  }
+  return nextPath;
+}
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     const otp = String(body?.otp || "").trim();
     const challengeToken = String(body?.challengeToken || "").trim();
+    const redirectTo = sanitizeNextPath(body?.next);
 
     if (!otp || !challengeToken) {
       return NextResponse.json(
@@ -17,14 +27,20 @@ export async function POST(request: Request) {
       );
     }
 
-    const validOtp = process.env.DUMMY_OTP || OTP_FALLBACK_CODE;
-    if (otp !== validOtp) {
-      return NextResponse.json({ success: false, message: "Invalid OTP." }, { status: 400 });
-    }
-
     const challenge = verifyAuthChallengeToken(challengeToken);
     if (!challenge || challenge.purpose !== "login" || !challenge.userId) {
       return NextResponse.json({ success: false, message: "Invalid or expired verification token." }, { status: 400 });
+    }
+
+    if (challenge.phone) {
+      const verified = await verifyPhoneOtpViaTwilio(challenge.phone, otp);
+      if (!verified) {
+        return NextResponse.json({ success: false, message: "Invalid OTP." }, { status: 400 });
+      }
+    } else {
+      if (!challenge.email || !challenge.emailOtpHash || hashEmailOtp(challenge.email, otp) !== challenge.emailOtpHash) {
+        return NextResponse.json({ success: false, message: "Invalid OTP." }, { status: 400 });
+      }
     }
 
     const user = await prisma.user.findUnique({
@@ -53,17 +69,18 @@ export async function POST(request: Request) {
         phone: user.phone,
         role: user.role
       },
-      redirectTo: "/account/profile"
+      redirectTo
     });
 
-    attachSessionCookie(response, user);
+    attachSessionCookie(response, request, user);
     return response;
   } catch (error) {
     console.error("Auth login verify error:", error);
+    const message = error instanceof Error ? error.message : "";
     return NextResponse.json(
       {
         success: false,
-        message: "Login verification failed due to a server issue. Please try again."
+        message: message || "Login verification failed due to a server issue. Please try again."
       },
       { status: 500 }
     );

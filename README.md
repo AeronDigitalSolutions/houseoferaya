@@ -6,7 +6,7 @@ Production-friendly architecture scaffold for a jewelry ecommerce platform using
 - Tailwind CSS
 - Prisma ORM + PostgreSQL
 - API route placeholders for cart, checkout, payment, shipping, product, and order flows
-- JWT auth + OTP (demo) flow for customer dashboard
+- JWT auth + OTP flow for customer dashboard
 
 All content is placeholder-only and ready to replace.
 
@@ -77,7 +77,11 @@ Required keys:
 - `SHIPPING_API_KEY`
 - `SHIPPING_API_SECRET`
 - `JWT_SECRET`
-- `DUMMY_OTP`
+- `TWILIO_ACCOUNT_SID`
+- `TWILIO_AUTH_TOKEN`
+- `TWILIO_VERIFY_SERVICE_SID`
+- `RESEND_API_KEY`
+- `EMAIL_FROM`
 
 ## Vercel Frontend + Hostinger Backend Setup
 

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Crown } from "lucide-react";
+import { SafeImage } from "@/components/ui/SafeImage";
 import { formatCurrency } from "@/lib/format";
 import type { Product } from "@/lib/types";
 import { isSignatureProductSlug } from "@/lib/signature-piece";
@@ -9,7 +10,7 @@ type ProductCardProps = {
   fullCardClickable?: boolean;
   hideViewButton?: boolean;
   emphasizeSignature?: boolean;
-  linkPrefix?: string;
+  linkPrefix?: string | null;
 };
 
 export function ProductCard({
@@ -17,17 +18,20 @@ export function ProductCard({
   fullCardClickable = false,
   hideViewButton = false,
   emphasizeSignature = false,
-  linkPrefix = "/products"
+  linkPrefix = null
 }: ProductCardProps) {
-  const productHref = `${linkPrefix}/${product.slug}`;
   const isSignature = Boolean(product.isSignature || isSignatureProductSlug(product.slug));
+  const resolvedLinkPrefix = linkPrefix ?? (isSignature ? "/signature-pieces" : "/products");
+  const productHref = `${resolvedLinkPrefix}/${product.slug}`;
   const showSignatureAccent = emphasizeSignature && isSignature;
 
   const mediaAndInfo = (
     <>
       <div className="relative aspect-square overflow-hidden bg-stone-100">
-        <img
+        <SafeImage
           src={product.image}
+          fallbackSrc={null}
+          showMissingPlaceholder
           alt={product.name}
           className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
         />
