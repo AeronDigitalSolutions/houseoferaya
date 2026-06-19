@@ -1,7 +1,8 @@
 import { Variants } from "framer-motion";
 
 export const revealUp: Variants = {
-  hidden: { opacity: 0, y: 26 },
+  // Keep content visible at all times so fast desktop scrolling never shows a blank flash.
+  hidden: { opacity: 1, y: 18 },
   visible: {
     opacity: 1,
     y: 0,
