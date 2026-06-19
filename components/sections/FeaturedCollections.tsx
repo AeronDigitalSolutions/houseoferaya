@@ -7,6 +7,7 @@ import { SectionHeading } from "@/components/ui/SectionHeading";
 import { SafeImage } from "@/components/ui/SafeImage";
 import { revealUp, staggerWrap } from "@/lib/animations";
 import { collections } from "@/lib/data";
+import { useCenterReveal } from "@/lib/use-center-reveal";
 import type { Category } from "@/lib/types";
 
 type FeaturedCollectionsProps = {
@@ -30,23 +31,26 @@ export function FeaturedCollections({
           description: collection.description,
           image: collection.image
         }));
+  const { ref, isCentered } = useCenterReveal<HTMLDivElement>();
   return (
     <section className="px-5 py-16 sm:px-8 sm:py-20 md:py-24 lg:px-12">
       <div className="mx-auto w-full max-w-7xl">
-        <div className="relative overflow-hidden rounded-[2rem] border border-[#dcc7a0]/60 bg-[linear-gradient(165deg,#f9f4ea_0%,#f4ede0_35%,#efe6d6_100%)] px-5 py-8 shadow-[0_26px_70px_rgba(80,56,26,0.14)] sm:px-8 sm:py-10 lg:px-10 lg:py-12">
+        <motion.div
+          ref={ref}
+          initial={false}
+          animate={isCentered ? "visible" : "hidden"}
+          variants={staggerWrap}
+          className="relative overflow-hidden rounded-[2rem] border border-[#dcc7a0]/60 bg-[linear-gradient(165deg,#f9f4ea_0%,#f4ede0_35%,#efe6d6_100%)] px-5 py-8 shadow-[0_26px_70px_rgba(80,56,26,0.14)] sm:px-8 sm:py-10 lg:px-10 lg:py-12"
+        >
           <div className="pointer-events-none absolute -left-20 top-1/2 h-56 w-56 -translate-y-1/2 rounded-full bg-[#ffffffaa] blur-3xl" />
           <div className="pointer-events-none absolute -right-14 top-0 h-44 w-44 rounded-full bg-[#f3dfbe] blur-3xl" />
 
           <div className="relative">
-            <SectionHeading eyebrow="Curated Edit" title={heading} description={description} />
+            <motion.div variants={revealUp}>
+              <SectionHeading eyebrow="Curated Edit" title={heading} description={description} />
+            </motion.div>
 
-            <motion.div
-              variants={staggerWrap}
-              initial={false}
-              whileInView="visible"
-              viewport={{ once: true, amount: 0.2 }}
-              className="mt-8 grid gap-4 sm:mt-10 sm:grid-cols-2 lg:grid-cols-3"
-            >
+            <motion.div className="mt-8 grid gap-4 sm:mt-10 sm:grid-cols-2 lg:grid-cols-3">
               {displayCategories.map((category) => (
                 <motion.article key={category.id} variants={revealUp}>
                   <Link
@@ -82,7 +86,7 @@ export function FeaturedCollections({
               ))}
             </motion.div>
           </div>
-        </div>
+        </motion.div>
       </div>
     </section>
   );

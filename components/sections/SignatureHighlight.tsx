@@ -6,6 +6,7 @@ import { ChevronRight, Crown, Gift, ShieldCheck, Sparkles } from "lucide-react";
 import { SafeImage } from "@/components/ui/SafeImage";
 import { formatCurrency } from "@/lib/format";
 import { products as fallbackProducts } from "@/lib/mock-data";
+import { useCenterReveal } from "@/lib/use-center-reveal";
 import type { Product } from "@/lib/types";
 
 type SignatureHighlightProps = {
@@ -28,6 +29,7 @@ function summarizeProduct(product: Product) {
 }
 
 export function SignatureHighlight({ products = [] }: SignatureHighlightProps) {
+  const { ref, isCentered } = useCenterReveal<HTMLDivElement>();
   const displayProducts = useMemo(() => {
     const source =
       products.length > 0 ? products : fallbackProducts.filter((product) => product.isSignature).slice(0, 4);
@@ -38,14 +40,14 @@ export function SignatureHighlight({ products = [] }: SignatureHighlightProps) {
   const [activeIndex, setActiveIndex] = useState(0);
 
   useEffect(() => {
-    if (displayProducts.length <= 1) return;
+    if (!isCentered || displayProducts.length <= 1) return;
 
     const timer = window.setInterval(() => {
       setActiveIndex((current) => (current + 1) % displayProducts.length);
     }, AUTO_ADVANCE_MS);
 
     return () => window.clearInterval(timer);
-  }, [displayProducts.length]);
+  }, [isCentered, displayProducts.length]);
 
   useEffect(() => {
     if (activeIndex >= displayProducts.length) {
@@ -60,7 +62,7 @@ export function SignatureHighlight({ products = [] }: SignatureHighlightProps) {
   const productHref = `/signature-pieces/${activeProduct.slug}`;
 
   return (
-    <section className="relative overflow-hidden bg-[linear-gradient(180deg,#0b1530_0%,#11214a_52%,#0c1734_100%)] px-4 py-10 sm:px-8 sm:py-12 lg:px-14 lg:py-14">
+    <section ref={ref} className="relative overflow-hidden bg-[linear-gradient(180deg,#0b1530_0%,#11214a_52%,#0c1734_100%)] px-4 py-10 sm:px-8 sm:py-12 lg:px-14 lg:py-14">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(70,94,154,0.16),transparent_28%),radial-gradient(circle_at_83%_76%,rgba(201,164,96,0.08),transparent_36%),linear-gradient(90deg,rgba(255,255,255,0.02)_0,rgba(255,255,255,0.02)_1px,transparent_1px,transparent_25%),linear-gradient(rgba(255,255,255,0.018)_0,rgba(255,255,255,0.018)_1px,transparent_1px,transparent_25%)] bg-[length:auto,auto,25%_100%,100%_100%]" />
 
       <div className="relative mx-auto w-full max-w-[1380px]">

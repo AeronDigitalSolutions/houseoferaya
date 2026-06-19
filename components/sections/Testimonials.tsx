@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { testimonials } from "@/lib/data";
+import { useCenterReveal } from "@/lib/use-center-reveal";
 import type { HomepageTestimonialItem } from "@/lib/homepage-content";
 
 type TestimonialsProps = {
@@ -12,6 +13,7 @@ type TestimonialsProps = {
 };
 
 export function Testimonials({ testimonials: items }: TestimonialsProps) {
+  const { ref, isCentered } = useCenterReveal<HTMLDivElement>();
   const displayTestimonials =
     items && items.length > 0
       ? items.map((item) => ({ name: item.customerName, quote: item.quote, image: item.imageUrl }))
@@ -19,17 +21,19 @@ export function Testimonials({ testimonials: items }: TestimonialsProps) {
   const [active, setActive] = useState(0);
 
   useEffect(() => {
+    if (!isCentered || displayTestimonials.length <= 1) return;
+
     const timer = setInterval(() => {
       setActive((prev) => (prev + 1) % displayTestimonials.length);
     }, 4500);
 
     return () => clearInterval(timer);
-  }, [displayTestimonials.length]);
+  }, [displayTestimonials.length, isCentered]);
 
   const current = displayTestimonials[active];
 
   return (
-    <section className="px-5 py-16 sm:px-8 sm:py-20 lg:px-12 md:py-24">
+    <section ref={ref} className="px-5 py-16 sm:px-8 sm:py-20 lg:px-12 md:py-24">
       <div className="mx-auto w-full max-w-5xl">
         <SectionHeading eyebrow="Client Notes" title="Testimonials" align="center" />
 
